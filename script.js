@@ -1,0 +1,110 @@
+class Ball {
+    constructor(x, y, direction) {
+      this.originalType = types[Math.floor(Math.random() * types.length)];
+      this.type = this.originalType;
+      this.color = colors[this.type];
+      this.speed = 1 + Math.random() * 2;
+      this.x = x;
+      this.y = y;
+      this.direction = direction;
+      this.vx = direction === 'right' ? this.speed : -this.speed;
+      this.vy = 0;
+  
+      this.score = 0;
+      this.visitedTypes = new Set([this.type]);
+      this.alreadyCollided = new Set(); // Сохраняем ID других шаров
+      this.id = Ball.idCounter++;
+    }
+  
+    update() {
+      this.x += this.vx;
+      this.y += this.vy;
+    }
+  
+    draw(ctx) {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, ballRadius, 0, Math.PI * 2);
+      ctx.fillStyle = this.color;
+      ctx.fill();
+      ctx.closePath();
+  
+      ctx.fillStyle = 'white';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(this.type, this.x, this.y);
+    }
+  
+    handleCollision(other) {
+      if (this === other || this.alreadyCollided.has(other.id)) return;
+  
+      const dx = this.x - other.x;
+      const dy = this.y - other.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+  
+      if (this.type === other.type && dist < ballRadius * 2) {
+        this.alreadyCollided.add(other.id);
+        other.alreadyCollided.add(this.id);
+  
+        const firstRed = Math.random() < 0.5;
+        const [redBall, blueBall] = firstRed ? [this, other] : [other, this];
+  
+        redBall.color = 'red';
+        blueBall.color = 'blue';
+  
+        redBall.score += 2;
+        blueBall.score += 1;
+  
+        redBall.advanceType();
+        blueBall.advanceType();
+  
+        redBall.findTarget();
+        blueBall.findTarget();
+  
+        console.log(`⚪ Шарик ${redBall.originalType} стал красным и получил 2 очка. Счет: ${redBall.score}`);
+        console.log(`🔵 Шарик ${blueBall.originalType} стал синим и получил 1 очко. Счет: ${blueBall.score}`);
+      }
+    }
+  
+    advanceType() {
+      const remaining = types.filter(t => !this.visitedTypes.has(t));
+      if (remaining.length > 0) {
+        this.type = remaining[0];
+        this.visitedTypes.add(this.type);
+        this.color = colors[this.type];
+      }
+    }
+  
+    findTarget() {
+      let minDist = Infinity;
+      let target = null;
+  
+      for (let b of balls) {
+        if (
+          b !== this &&
+          b.type === this.type &&
+          !this.alreadyCollided.has(b.id)
+        ) {
+          const dx = b.x - this.x;
+          const dy = b.y - this.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < minDist) {
+            minDist = dist;
+            target = b;
+          }
+        }
+      }
+  
+      if (target) {
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
+        const mag = Math.sqrt(dx * dx + dy * dy);
+  
+        this.vx = (dx / mag) * this.speed;
+        this.vy = (dy / mag) * this.speed;
+      }
+    }
+  }
+  
+  Ball.idCounter = 0;
+  
