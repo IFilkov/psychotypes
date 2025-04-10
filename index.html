@@ -111,6 +111,7 @@
       this.type = remaining[0];
       this.visitedTypes.add(this.type);
       this.color = colors[this.type];
+      this.findTarget(); // 🔁 ищем нового противника
     } else {
       // Все типы пройдены — замирает
       this.vx = 0;
@@ -120,7 +121,7 @@
   }
   
 
-    findTarget() {
+  findTarget() {
     let minDist = Infinity;
     let target = null;
   
@@ -129,7 +130,7 @@
         b !== this &&
         b.type === this.type &&
         !this.alreadyCollided.has(b.id) &&
-        this.direction !== b.direction // 🔥 ключевая проверка!
+        this.direction !== b.direction
       ) {
         const dx = b.x - this.x;
         const dy = b.y - this.y;
@@ -148,10 +149,16 @@
   
       this.vx = (dx / mag) * this.speed;
       this.vy = (dy / mag) * this.speed;
+    } else {
+      // ❗Если цели нет — останавливаемся
+      this.vx = 0;
+      this.vy = 0;
     }
   }
-  
+
   }
+  
+  
   
   Ball.idCounter = 0;
   
