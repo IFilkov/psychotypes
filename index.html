@@ -105,43 +105,52 @@
     }
 
     advanceType() {
-      const remaining = types.filter(t => !this.visitedTypes.has(t));
-      if (remaining.length > 0) {
-        this.type = remaining[0];
-        this.visitedTypes.add(this.type);
-        this.color = colors[this.type];
-      }
+    const remaining = types.filter(t => !this.visitedTypes.has(t));
+    
+    if (remaining.length > 0) {
+      this.type = remaining[0];
+      this.visitedTypes.add(this.type);
+      this.color = colors[this.type];
+    } else {
+      // Все типы пройдены — замирает
+      this.vx = 0;
+      this.vy = 0;
+      console.log(`🛑 Шарик ${this.originalType} завершил цикл и замер с ${this.score} очками.`);
     }
+  }
+  
 
     findTarget() {
-      let minDist = Infinity;
-      let target = null;
+    let minDist = Infinity;
+    let target = null;
   
-      for (let b of balls) {
-        if (
-          b !== this &&
-          b.type === this.type &&
-          !this.alreadyCollided.has(b.id)
-        ) {
-          const dx = b.x - this.x;
-          const dy = b.y - this.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < minDist) {
-            minDist = dist;
-            target = b;
-          }
+    for (let b of balls) {
+      if (
+        b !== this &&
+        b.type === this.type &&
+        !this.alreadyCollided.has(b.id) &&
+        this.direction !== b.direction // 🔥 ключевая проверка!
+      ) {
+        const dx = b.x - this.x;
+        const dy = b.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < minDist) {
+          minDist = dist;
+          target = b;
         }
       }
-  
-      if (target) {
-        const dx = target.x - this.x;
-        const dy = target.y - this.y;
-        const mag = Math.sqrt(dx * dx + dy * dy);
-  
-        this.vx = (dx / mag) * this.speed;
-        this.vy = (dy / mag) * this.speed;
-      }
     }
+  
+    if (target) {
+      const dx = target.x - this.x;
+      const dy = target.y - this.y;
+      const mag = Math.sqrt(dx * dx + dy * dy);
+  
+      this.vx = (dx / mag) * this.speed;
+      this.vy = (dy / mag) * this.speed;
+    }
+  }
+  
   }
   
   Ball.idCounter = 0;
@@ -154,10 +163,19 @@
     const spacing = canvas.height / 7;
     for (let i = 1; i <= 6; i++) {
       let yPos = spacing * i;
-      balls.push(new Ball(0, yPos, 'right'));
-      balls.push(new Ball(canvas.width, yPos, 'left'));
+      
+      const leftBall = new Ball(0, yPos, 'right');
+      const rightBall = new Ball(canvas.width, yPos, 'left');
+      
+      balls.push(leftBall, rightBall);
     }
+  
+    // Все шарики созданы — запускаем для каждого поиск цели
+    balls.forEach(ball => ball.findTarget());
   }
+
+  // findTarget();
+  
 
   function checkCollisions() {
     for (let i = 0; i < balls.length; i++) {
