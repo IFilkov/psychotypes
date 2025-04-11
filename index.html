@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Ball Interaction</title>
+    <title>Ball Matcher</title>
     <style>
       canvas {
         background: #111;
@@ -53,6 +53,17 @@
         }
 
         findTarget() {
+          if (this.isFinished) return;
+
+          const remaining = types.filter((t) => !this.visitedTypes.has(t));
+          if (remaining.length === 0) {
+            this.finish();
+            return;
+          }
+
+          this.type = remaining[0];
+          this.color = colors[this.type];
+
           const candidates = balls.filter(
             (b) =>
               b !== this &&
@@ -63,7 +74,10 @@
           );
 
           if (candidates.length > 0) {
-            // можно улучшить — выбирать ближайшую цель
+            // Ближайший
+            candidates.sort(
+              (a, b) => this.getDistance(a) - this.getDistance(b)
+            );
             this.target = candidates[0];
             const dx = this.target.x - this.x;
             const dy = this.target.y - this.y;
@@ -83,68 +97,52 @@
           this.x += this.vx;
           this.y += this.vy;
 
-          // Проверка на столкновение
           if (
             this.target &&
             !this.target.isFinished &&
-            !this.target.grouping &&
             this.getDistance(this.target) < this.radius * 2
           ) {
             this.handleCollision(this.target);
           }
 
           if (this.grouping && !this.isGrouped) {
-            const sameColor = balls.find(
-              (b) =>
-                b !== this &&
-                b.color === this.color &&
-                b.isFinished &&
-                b.grouping &&
-                !b.isGrouped
-            );
-
-            if (sameColor) {
-              const dx = sameColor.x - this.x;
-              const dy = sameColor.y - this.y;
-              const dist = Math.sqrt(dx * dx + dy * dy);
-
-              if (dist < this.radius * 2) {
-                this.vx = 0;
-                this.vy = 0;
-                this.isGrouped = true;
-              }
-            }
+            this.groupWithSameColor();
           }
         }
 
         handleCollision(other) {
+          // меняем цвет в зависимости от стороны
           this.color = this.side === "left" ? "red" : "blue";
           other.color = other.side === "left" ? "red" : "blue";
 
           this.score++;
           other.score++;
 
+          console.log(`💥 Коллизия!`);
+          console.log(
+            `🔴 ${this.side} [${this.originalType}] → очки: ${this.score}`
+          );
+          console.log(
+            `🔵 ${other.side} [${other.originalType}] → очки: ${other.score}`
+          );
+          console.log("---");
+
+          this.visitedTypes.add(this.type);
+          other.visitedTypes.add(other.type);
+
           this.target = null;
           other.target = null;
 
-          this.advanceType();
-          other.advanceType();
+          this.findTarget();
+          other.findTarget();
         }
 
-        advanceType() {
-          const remaining = types.filter((t) => !this.visitedTypes.has(t));
-          if (remaining.length > 0) {
-            this.type = remaining[0];
-            this.visitedTypes.add(this.type);
-            this.color = colors[this.type];
-            this.findTarget();
-          } else {
-            this.vx = 0;
-            this.vy = 0;
-            this.isFinished = true;
-            this.grouping = true;
-            this.groupWithSameColor();
-          }
+        finish() {
+          this.isFinished = true;
+          this.vx = 0;
+          this.vy = 0;
+          this.grouping = true;
+          this.color = this.side === "left" ? "red" : "blue";
         }
 
         groupWithSameColor() {
@@ -152,17 +150,25 @@
             (b) =>
               b !== this &&
               b.color === this.color &&
-              b.grouping &&
               b.isFinished &&
+              b.grouping &&
               !b.isGrouped
           );
 
           if (buddy) {
             const dx = buddy.x - this.x;
             const dy = buddy.y - this.y;
-            const mag = Math.sqrt(dx * dx + dy * dy);
-            this.vx = (dx / mag) * this.speed;
-            this.vy = (dy / mag) * this.speed;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < this.radius * 2) {
+              this.vx = 0;
+              this.vy = 0;
+              this.isGrouped = true;
+            } else {
+              const mag = Math.sqrt(dx * dx + dy * dy);
+              this.vx = (dx / mag) * this.speed;
+              this.vy = (dy / mag) * this.speed;
+            }
           } else {
             this.vx = 0;
             this.vy = 0;
@@ -186,11 +192,11 @@
           ctx.fillStyle = "white";
           ctx.font = "10px Arial";
           ctx.textAlign = "center";
-          ctx.fillText(this.type, this.x, this.y + 1);
+          ctx.fillText(this.type, this.x, this.y + 3);
         }
       }
 
-      // Создание начальных шариков
+      // Создание всех шаров
       function spawnBalls() {
         for (let i = 0; i < 8; i++) {
           const type = types[i % types.length];
