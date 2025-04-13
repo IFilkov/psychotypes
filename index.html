@@ -1,186 +1,247 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Шарики</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-    }
-
-    canvas {
-      display: block;
-      background: #f0f0f0;
-    }
-  </style>
-</head>
-<body>
-<canvas id="gameCanvas"></canvas>
-
-<script>
-  const canvas = document.getElementById('gameCanvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  const ballRadius = 10;
-  const types = ['A', 'B', 'D', 'G'];
-  const colors = {
-    A: 'red',
-    B: 'blue',
-    D: 'green',
-    G: 'orange',
-    red: 'red',
-    blue: 'blue'
-  };
-
-  class Ball {
-    constructor(x, y, direction) {
-      this.originalType = types[Math.floor(Math.random() * types.length)];
-      this.type = this.originalType;
-      this.color = colors[this.type];
-      this.speed = 1 + Math.random() * 2;
-      this.x = x;
-      this.y = y;
-      this.direction = direction;
-      this.vx = direction === 'right' ? this.speed : -this.speed;
-      this.vy = 0;
-  
-      this.score = 0;
-      this.visitedTypes = new Set([this.type]);
-      this.alreadyCollided = new Set(); // Сохраняем ID других шаров
-      this.id = Ball.idCounter++;
-    }
-
-    update() {
-      this.x += this.vx;
-      this.y += this.vy;
-    }
-
-    draw(ctx) {
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, ballRadius, 0, Math.PI * 2);
-      ctx.fillStyle = this.color;
-      ctx.fill();
-      ctx.closePath();
-  
-      ctx.fillStyle = 'white';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(this.type, this.x, this.y);
-    }
-
-    handleCollision(other) {
-      if (this === other || this.alreadyCollided.has(other.id)) return;
-  
-      const dx = this.x - other.x;
-      const dy = this.y - other.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-  
-      if (this.type === other.type && dist < ballRadius * 2) {
-        this.alreadyCollided.add(other.id);
-        other.alreadyCollided.add(this.id);
-  
-        const firstRed = Math.random() < 0.5;
-        const [redBall, blueBall] = firstRed ? [this, other] : [other, this];
-  
-        redBall.color = 'red';
-        blueBall.color = 'blue';
-  
-        redBall.score += 2;
-        blueBall.score += 1;
-  
-        redBall.advanceType();
-        blueBall.advanceType();
-  
-        redBall.findTarget();
-        blueBall.findTarget();
-  
-        console.log(`⚪ Шарик ${redBall.originalType} стал красным и получил 2 очка. Счет: ${redBall.score}`);
-        console.log(`🔵 Шарик ${blueBall.originalType} стал синим и получил 1 очко. Счет: ${blueBall.score}`);
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Шарики</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
       }
-    }
 
-    advanceType() {
-      const remaining = types.filter(t => !this.visitedTypes.has(t));
-      if (remaining.length > 0) {
-        this.type = remaining[0];
-        this.visitedTypes.add(this.type);
-        this.color = colors[this.type];
+      canvas {
+        display: block;
+        background: #f0f0f0;
       }
-    }
+    </style>
+  </head>
+  <body>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
 
-    findTarget() {
-      let minDist = Infinity;
-      let target = null;
-  
-      for (let b of balls) {
-        if (
-          b !== this &&
-          b.type === this.type &&
-          !this.alreadyCollided.has(b.id)
-        ) {
-          const dx = b.x - this.x;
-          const dy = b.y - this.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < minDist) {
-            minDist = dist;
-            target = b;
+      const ballRadius = 10;
+      const types = ["A", "B", "D", "G"];
+      const colors = {
+        A: "red",
+        B: "blue",
+        D: "green",
+        G: "orange",
+        red: "red",
+        blue: "blue",
+      };
+
+      let frameCount = 0;
+
+      class Ball {
+        constructor(x, y, direction) {
+          this.id = Ball.idCounter++;
+          this.originalType = types[Math.floor(Math.random() * types.length)];
+          this.type = this.originalType;
+          this.color = colors[this.type];
+          this.finalColor = null;
+
+          this.x = x;
+          this.y = y;
+          this.direction = direction;
+          this.speed = 1 + Math.random() * 2;
+          this.vx = direction === "right" ? this.speed : -this.speed;
+          this.vy = 0;
+
+          this.visitedTypes = new Set([this.type]);
+          this.score = 0;
+          this.isFinished = false;
+          this.alreadyCollided = new Set();
+        }
+
+        update() {
+          if (this.isFinished) {
+            if (frameCount % 60 === 0) this.groupWithSameColor();
+            this.x += this.vx;
+            this.y += this.vy;
+            return;
+          }
+
+          this.x += this.vx;
+          this.y += this.vy;
+
+          for (let other of balls) {
+            if (
+              other !== this &&
+              !other.isFinished &&
+              this.direction !== other.direction &&
+              !this.alreadyCollided.has(other.id)
+            ) {
+              const dx = other.x - this.x;
+              const dy = other.y - this.y;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+
+              if (dist < ballRadius * 2) {
+                this.handleCollision(other);
+              }
+            }
+          }
+        }
+
+        draw(ctx) {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, ballRadius, 0, Math.PI * 2);
+          ctx.fillStyle = this.color;
+          ctx.fill();
+          ctx.closePath();
+
+          ctx.fillStyle = "white";
+          ctx.font = "12px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(this.type, this.x, this.y);
+        }
+
+        handleCollision(other) {
+          if (this.alreadyCollided.has(other.id)) return;
+          if (other.alreadyCollided.has(this.id)) return;
+
+          this.alreadyCollided.add(other.id);
+          other.alreadyCollided.add(this.id);
+
+          const colorsList = ["red", "blue"];
+          const thisColor = colorsList[Math.floor(Math.random() * 2)];
+          const otherColor = thisColor === "red" ? "blue" : "red";
+
+          this.color = thisColor;
+          other.color = otherColor;
+          this.finalColor = thisColor;
+          other.finalColor = otherColor;
+
+          this.score += thisColor === "red" ? 2 : 1;
+          other.score += otherColor === "red" ? 2 : 1;
+
+          console.log(
+            `💥 Столкновение: ${this.originalType} (${this.type}) vs ${other.originalType} (${other.type})`
+          );
+          console.log(`🔴 ${this.id} → ${this.score} очков`);
+          console.log(`🔵 ${other.id} → ${other.score} очков`);
+
+          this.advanceType();
+          other.advanceType();
+        }
+
+        advanceType() {
+          const remaining = types.filter((t) => !this.visitedTypes.has(t));
+
+          if (remaining.length > 0) {
+            this.type = remaining[0];
+            this.visitedTypes.add(this.type);
+            this.color = colors[this.type];
+            this.findTarget();
+          } else {
+            this.vx = 0;
+            this.vy = 0;
+            this.isFinished = true;
+            console.log(
+              `✅ Шар ${this.id} завершил цикл с ${this.score} очками`
+            );
+            this.groupWithSameColor();
+          }
+        }
+
+        findTarget() {
+          let minDist = Infinity;
+          let target = null;
+
+          for (let b of balls) {
+            if (
+              b !== this &&
+              b.type === this.type &&
+              !this.alreadyCollided.has(b.id) &&
+              this.direction !== b.direction &&
+              !b.isFinished
+            ) {
+              const dx = b.x - this.x;
+              const dy = b.y - this.y;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist < minDist) {
+                minDist = dist;
+                target = b;
+              }
+            }
+          }
+
+          if (target) {
+            const dx = target.x - this.x;
+            const dy = target.y - this.y;
+            const mag = Math.sqrt(dx * dx + dy * dy);
+            this.vx = (dx / mag) * this.speed;
+            this.vy = (dy / mag) * this.speed;
+          } else {
+            this.vx = 0;
+            this.vy = 0;
+          }
+        }
+
+        groupWithSameColor() {
+          let minDist = Infinity;
+          let target = null;
+
+          for (let b of balls) {
+            if (
+              b !== this &&
+              b.isFinished &&
+              b.finalColor === this.finalColor
+            ) {
+              const dx = b.x - this.x;
+              const dy = b.y - this.y;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist < minDist) {
+                minDist = dist;
+                target = b;
+              }
+            }
+          }
+
+          if (target) {
+            const dx = target.x - this.x;
+            const dy = target.y - this.y;
+            const mag = Math.sqrt(dx * dx + dy * dy);
+            this.vx = (dx / mag) * (this.speed * 0.5);
+            this.vy = (dy / mag) * (this.speed * 0.5);
+          } else {
+            this.vx = 0;
+            this.vy = 0;
           }
         }
       }
-  
-      if (target) {
-        const dx = target.x - this.x;
-        const dy = target.y - this.y;
-        const mag = Math.sqrt(dx * dx + dy * dy);
-  
-        this.vx = (dx / mag) * this.speed;
-        this.vy = (dy / mag) * this.speed;
+
+      Ball.idCounter = 0;
+      const balls = [];
+
+      function spawnBalls() {
+        const spacing = canvas.height / 7;
+        for (let i = 1; i <= 6; i++) {
+          const y = spacing * i;
+          const leftBall = new Ball(0, y, "right");
+          const rightBall = new Ball(canvas.width, y, "left");
+          balls.push(leftBall, rightBall);
+        }
+
+        balls.forEach((ball) => ball.findTarget());
       }
-    }
-  }
-  
-  Ball.idCounter = 0;
-  
 
-  
-  const balls = [];
-
-  function spawnBalls() {
-    const spacing = canvas.height / 7;
-    for (let i = 1; i <= 6; i++) {
-      let yPos = spacing * i;
-      balls.push(new Ball(0, yPos, 'right'));
-      balls.push(new Ball(canvas.width, yPos, 'left'));
-    }
-  }
-
-  function checkCollisions() {
-    for (let i = 0; i < balls.length; i++) {
-      for (let j = i + 1; j < balls.length; j++) {
-        balls[i].handleCollision(balls[j]);
+      function updateAndDraw() {
+        frameCount++;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let ball of balls) {
+          ball.update();
+          ball.draw(ctx);
+        }
+        requestAnimationFrame(updateAndDraw);
       }
-    }
-  }
 
-  function updateAndDraw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    for (let ball of balls) {
-      ball.update();
-      ball.draw(ctx);
-    }
-
-    checkCollisions();
-    requestAnimationFrame(updateAndDraw);
-  }
-
-  spawnBalls();
-  updateAndDraw();
-</script>
-</body>
+      spawnBalls();
+      updateAndDraw();
+    </script>
+  </body>
 </html>
