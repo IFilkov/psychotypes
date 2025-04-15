@@ -20,9 +20,49 @@
       const types = ["A", "B", "D", "G"];
       let balls = [];
       let idCounter = 0;
+      let roundsCompleted = 0;
+      let gameRunning = true;
 
       function getBallById(id) {
         return balls.find((ball) => ball.id === id);
+      }
+
+      function checkRoundCompletion() {
+        const allCompleted = balls.every((b) => b.finished);
+        if (!allCompleted) return;
+
+        roundsCompleted++;
+        console.log(`Раунд ${roundsCompleted} завершён`);
+
+        if (roundsCompleted === 1) {
+          // Удаляем шарики с < 2 очками
+          balls = balls.filter((b) => b.score >= 2);
+        } else if (roundsCompleted === 2) {
+          // Удаляем шарики с <= 2 очками
+          balls = balls.filter((b) => b.score > 2);
+          console.log("Финальный результат:");
+          balls.forEach((b) =>
+            console.log(`Ball ${b.id} (${b.type}): ${b.score} очков`)
+          );
+          gameRunning = false;
+          console.log("Игра завершена");
+          return;
+        }
+
+        // Если все были удалены
+        if (balls.length === 0) {
+          console.log("Все шарики удалены. Игра завершена.");
+          gameRunning = false;
+          return;
+        }
+
+        // Запускаем новый раунд
+        setTimeout(() => {
+          balls.forEach((ball) => {
+            ball.resetForNewRound();
+            ball.findNextTarget();
+          });
+        }, 2000);
       }
 
       class Ball {
@@ -39,6 +79,14 @@
           this.target = null;
           this.collidedTypes = new Set();
           this.finished = false;
+        }
+
+        resetForNewRound() {
+          this.finished = false;
+          this.target = null;
+          this.vx = 0;
+          this.vy = 0;
+          this.collidedTypes = new Set();
         }
 
         update() {
@@ -71,6 +119,7 @@
           const candidates = balls.filter(
             (b) => b !== this && !this.collidedTypes.has(b.type) && !b.finished
           );
+
           if (candidates.length === 0) {
             this.finishCycle();
             return;
@@ -95,10 +144,10 @@
           this.score++;
 
           console.clear();
-          console.log("Current Scores:");
-          balls.forEach((ball) => {
-            console.log(`Ball ${ball.id} (${ball.type}): ${ball.score} points`);
-          });
+          console.log("Текущие очки:");
+          balls.forEach((ball) =>
+            console.log(`Ball ${ball.id} (${ball.type}): ${ball.score} очков`)
+          );
 
           if (this.collidedTypes.size >= types.length - 1) {
             this.finishCycle();
@@ -143,10 +192,17 @@
       function updateAndDraw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        balls.forEach((ball) => {
-          ball.update();
-          ball.draw();
-        });
+        if (gameRunning) {
+          balls.forEach((ball) => {
+            ball.update();
+            ball.draw();
+          });
+
+          checkRoundCompletion();
+        } else {
+          // Финальный показ
+          balls.forEach((ball) => ball.draw());
+        }
 
         requestAnimationFrame(updateAndDraw);
       }
