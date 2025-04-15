@@ -131,9 +131,9 @@
         balls = [];
         idCounter = 0;
 
-        for (let i = 0; i < 8; i++) {
-          const x = 300 + Math.random() * 200;
-          const y = 200 + Math.random() * 200;
+        for (let i = 0; i < 18; i++) {
+          const x = 100 + Math.random() * 400;
+          const y = 100 + Math.random() * 400;
           const type = types[Math.floor(Math.random() * types.length)];
           const ball = new Ball(x, y, type, idCounter++);
           balls.push(ball);
