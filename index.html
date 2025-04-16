@@ -190,9 +190,11 @@
             ball.vy = 0;
 
             if (ball.score === 0) {
-              // Шарик с 0 очков — остается на месте и без цвета
-              return;
-            } else if (ball.score === 1) {
+              ball.color = "purple";
+              ball.targetX = 600 + Math.random() * 100;
+              ball.targetY = 100 + Math.random() * 50;
+            }
+            if (ball.score === 1) {
               ball.color = "purple";
               ball.targetX = 600 + Math.random() * 100;
               ball.targetY = 100 + Math.random() * 50;
