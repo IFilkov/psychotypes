@@ -1,186 +1,304 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Шарики</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-    }
-
-    canvas {
-      display: block;
-      background: #f0f0f0;
-    }
-  </style>
-</head>
-<body>
-<canvas id="gameCanvas"></canvas>
-
-<script>
-  const canvas = document.getElementById('gameCanvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  const ballRadius = 10;
-  const types = ['A', 'B', 'D', 'G'];
-  const colors = {
-    A: 'red',
-    B: 'blue',
-    D: 'green',
-    G: 'orange',
-    red: 'red',
-    blue: 'blue'
-  };
-
-  class Ball {
-    constructor(x, y, direction) {
-      this.originalType = types[Math.floor(Math.random() * types.length)];
-      this.type = this.originalType;
-      this.color = colors[this.type];
-      this.speed = 1 + Math.random() * 2;
-      this.x = x;
-      this.y = y;
-      this.direction = direction;
-      this.vx = direction === 'right' ? this.speed : -this.speed;
-      this.vy = 0;
-  
-      this.score = 0;
-      this.visitedTypes = new Set([this.type]);
-      this.alreadyCollided = new Set(); // Сохраняем ID других шаров
-      this.id = Ball.idCounter++;
-    }
-
-    update() {
-      this.x += this.vx;
-      this.y += this.vy;
-    }
-
-    draw(ctx) {
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, ballRadius, 0, Math.PI * 2);
-      ctx.fillStyle = this.color;
-      ctx.fill();
-      ctx.closePath();
-  
-      ctx.fillStyle = 'white';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(this.type, this.x, this.y);
-    }
-
-    handleCollision(other) {
-      if (this === other || this.alreadyCollided.has(other.id)) return;
-  
-      const dx = this.x - other.x;
-      const dy = this.y - other.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-  
-      if (this.type === other.type && dist < ballRadius * 2) {
-        this.alreadyCollided.add(other.id);
-        other.alreadyCollided.add(this.id);
-  
-        const firstRed = Math.random() < 0.5;
-        const [redBall, blueBall] = firstRed ? [this, other] : [other, this];
-  
-        redBall.color = 'red';
-        blueBall.color = 'blue';
-  
-        redBall.score += 2;
-        blueBall.score += 1;
-  
-        redBall.advanceType();
-        blueBall.advanceType();
-  
-        redBall.findTarget();
-        blueBall.findTarget();
-  
-        console.log(`⚪ Шарик ${redBall.originalType} стал красным и получил 2 очка. Счет: ${redBall.score}`);
-        console.log(`🔵 Шарик ${blueBall.originalType} стал синим и получил 1 очко. Счет: ${blueBall.score}`);
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ball Simulation</title>
+    <style>
+      canvas {
+        background: #f0f0f0;
+        display: block;
+        margin: 0 auto;
       }
-    }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <script>
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
 
-    advanceType() {
-      const remaining = types.filter(t => !this.visitedTypes.has(t));
-      if (remaining.length > 0) {
-        this.type = remaining[0];
-        this.visitedTypes.add(this.type);
-        this.color = colors[this.type];
-      }
-    }
+      const types = ["A", "B", "D", "G"];
+      let balls = [];
+      let lowScoreGroup = [];
+      let idCounter = 0;
+      let roundsCompleted = 0;
+      let gameRunning = true;
 
-    findTarget() {
-      let minDist = Infinity;
-      let target = null;
-  
-      for (let b of balls) {
-        if (
-          b !== this &&
-          b.type === this.type &&
-          !this.alreadyCollided.has(b.id)
-        ) {
-          const dx = b.x - this.x;
-          const dy = b.y - this.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < minDist) {
-            minDist = dist;
-            target = b;
+      class Ball {
+        constructor(x, y, type, id) {
+          this.id = id;
+          this.x = x;
+          this.y = y;
+          this.radius = 15;
+          this.type = type;
+          this.vx = 0;
+          this.vy = 0;
+          this.color = "gray";
+          this.score = 0;
+          this.target = null;
+          this.collidedTypes = new Set();
+          this.finished = false;
+          this.grouped = false;
+
+          // Для движения к позиции в группе
+          this.targetX = null;
+          this.targetY = null;
+        }
+
+        resetForNewRound() {
+          this.finished = false;
+          this.target = null;
+        }
+
+        update() {
+          if (this.grouped) {
+            // Движение к позиции группы
+            if (this.targetX !== null && this.targetY !== null) {
+              const dx = this.targetX - this.x;
+              const dy = this.targetY - this.y;
+              const dist = Math.hypot(dx, dy);
+
+              if (dist > 1) {
+                this.vx = (dx / dist) * 1.2;
+                this.vy = (dy / dist) * 1.2;
+                this.x += this.vx;
+                this.y += this.vy;
+              } else {
+                this.vx = 0;
+                this.vy = 0;
+              }
+            }
+            return;
+          }
+
+          if (this.finished) return;
+
+          if (!this.target || this.target.finished || this.target === this) {
+            this.findNextTarget();
+          }
+
+          if (this.target) {
+            const dx = this.target.x - this.x;
+            const dy = this.target.y - this.y;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist > 1) {
+              this.vx = (dx / dist) * 1.5;
+              this.vy = (dy / dist) * 1.5;
+            }
+
+            this.x += this.vx;
+            this.y += this.vy;
+
+            if (dist < this.radius * 2) {
+              this.handleCollision(this.target);
+            }
           }
         }
+
+        findNextTarget() {
+          const candidates = balls.filter(
+            (b) =>
+              b !== this &&
+              !this.collidedTypes.has(b.type) &&
+              !b.finished &&
+              !b.grouped
+          );
+          if (candidates.length === 0) {
+            this.finishCycle();
+            return;
+          }
+
+          let closest = null;
+          let minDist = Infinity;
+
+          for (const b of candidates) {
+            const dist = Math.hypot(b.x - this.x, b.y - this.y);
+            if (dist < minDist) {
+              minDist = dist;
+              closest = b;
+            }
+          }
+
+          this.target = closest;
+        }
+
+        handleCollision(other) {
+          this.collidedTypes.add(other.type);
+          this.score += Math.floor(Math.random() * 3) + 1; // случайные очки от 1 до 3
+
+          if (this.collidedTypes.size >= types.length - 1) {
+            this.finishCycle();
+          }
+
+          this.target = null;
+        }
+
+        finishCycle() {
+          this.finished = true;
+          this.vx = 0;
+          this.vy = 0;
+        }
+
+        draw() {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+          ctx.fillStyle = this.color;
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = "black";
+          ctx.font = "10px Arial";
+          ctx.fillText(this.type + this.id, this.x - 10, this.y - 20);
+          ctx.fillText("S:" + this.score, this.x - 10, this.y + 25);
+        }
       }
-  
-      if (target) {
-        const dx = target.x - this.x;
-        const dy = target.y - this.y;
-        const mag = Math.sqrt(dx * dx + dy * dy);
-  
-        this.vx = (dx / mag) * this.speed;
-        this.vy = (dy / mag) * this.speed;
+
+      function spawnBalls() {
+        balls = [];
+        lowScoreGroup = [];
+        idCounter = 0;
+        for (let i = 0; i < 18; i++) {
+          const x = 100 + Math.random() * 400;
+          const y = 100 + Math.random() * 400;
+          const type = types[Math.floor(Math.random() * types.length)];
+          const ball = new Ball(x, y, type, idCounter++);
+          balls.push(ball);
+        }
       }
-    }
-  }
-  
-  Ball.idCounter = 0;
-  
 
-  
-  const balls = [];
+      function checkRoundCompletion() {
+        const allCompleted = balls.every((b) => b.finished || b.grouped);
+        if (!allCompleted) return;
 
-  function spawnBalls() {
-    const spacing = canvas.height / 7;
-    for (let i = 1; i <= 6; i++) {
-      let yPos = spacing * i;
-      balls.push(new Ball(0, yPos, 'right'));
-      balls.push(new Ball(canvas.width, yPos, 'left'));
-    }
-  }
+        roundsCompleted++;
+        console.log(`Раунд ${roundsCompleted} завершён`);
 
-  function checkCollisions() {
-    for (let i = 0; i < balls.length; i++) {
-      for (let j = i + 1; j < balls.length; j++) {
-        balls[i].handleCollision(balls[j]);
+        if (roundsCompleted === 1) {
+          balls = balls.filter((b) => {
+            if (b.score < 2) {
+              lowScoreGroup.push(b);
+              return false;
+            }
+            return true;
+          });
+        }
+        if (roundsCompleted === 1) {
+          balls.forEach((ball) => {
+            ball.grouped = true;
+            ball.vx = 0;
+            ball.vy = 0;
+
+            if (ball.score === 0) {
+              // Шарик с 0 очков — остается на месте и без цвета
+              return;
+            } else if (ball.score === 1) {
+              ball.color = "purple";
+              ball.targetX = 600 + Math.random() * 100;
+              ball.targetY = 100 + Math.random() * 50;
+            } else if (ball.score <= 4) {
+              ball.color = "green"; // 2–4 очка
+              ball.targetX = 100 + Math.random() * 100;
+              ball.targetY = 100 + Math.random() * 50;
+            } else if (ball.score <= 6) {
+              ball.color = "blue"; // 5–6 очков
+              ball.targetX = 100 + Math.random() * 100;
+              ball.targetY = 400 + Math.random() * 100;
+            } else if (ball.score <= 9) {
+              ball.color = "red"; // 7–9 очков
+              ball.targetX = 600 + Math.random() * 100;
+              ball.targetY = 400 + Math.random() * 100;
+            }
+
+            // Только движущиеся шарики
+            if (ball.score > 0) {
+              lowScoreGroup.push(ball);
+            }
+          });
+
+          console.log("Очки шариков:");
+          [...balls, ...lowScoreGroup].forEach((ball) => {
+            console.log(`Шарик ${ball.type}${ball.id}: ${ball.score} очков`);
+          });
+
+          gameRunning = false;
+          console.log("Игра завершена");
+          return;
+        }
+
+        // if (roundsCompleted === 1) {
+        //   balls.forEach((ball) => {
+        //     ball.grouped = true;
+        //     ball.vx = 0;
+        //     ball.vy = 0;
+
+        //     if (ball.score <= 1) {
+        //       ball.color = "purple"; // 0-1 очков
+        //       ball.targetX = 600 + Math.random() * 100;
+        //       ball.targetY = 100 + Math.random() * 50;
+        //     } else if (ball.score <= 4) {
+        //       ball.color = "green"; // 2-4 очков
+        //       ball.targetX = 100 + Math.random() * 100;
+        //       ball.targetY = 100 + Math.random() * 50;
+        //     } else if (ball.score <= 6) {
+        //       ball.color = "blue"; // 5-6 очков
+        //       ball.targetX = 100 + Math.random() * 100;
+        //       ball.targetY = 400 + Math.random() * 100;
+        //     } else if (ball.score <= 9) {
+        //       ball.color = "red"; // 7-9 очков
+        //       ball.targetX = 600 + Math.random() * 100;
+        //       ball.targetY = 400 + Math.random() * 100;
+        //     }
+
+        //     lowScoreGroup.push(ball);
+        //   });
+
+        //   console.log("Очки шариков:");
+        //   [...balls, ...lowScoreGroup].forEach((ball) => {
+        //     console.log(`Шарик ${ball.type}${ball.id}: ${ball.score} очков`);
+        //   });
+
+        //   gameRunning = false;
+        //   console.log("Игра завершена");
+        //   return;
+        // }
+
+        setTimeout(() => {
+          startNewRound();
+        }, 2000);
       }
-    }
-  }
 
-  function updateAndDraw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+      function startNewRound() {
+        balls.forEach((ball) => {
+          ball.resetForNewRound();
+          ball.findNextTarget();
+        });
+      }
 
-    for (let ball of balls) {
-      ball.update();
-      ball.draw(ctx);
-    }
+      function updateAndDraw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    checkCollisions();
-    requestAnimationFrame(updateAndDraw);
-  }
+        balls.forEach((ball) => {
+          if (gameRunning) {
+            ball.update();
+          }
+          ball.draw();
+        });
 
-  spawnBalls();
-  updateAndDraw();
-</script>
-</body>
+        lowScoreGroup.forEach((ball) => {
+          ball.update();
+          ball.draw();
+        });
+
+        if (gameRunning) {
+          checkRoundCompletion();
+        }
+
+        requestAnimationFrame(updateAndDraw);
+      }
+
+      spawnBalls();
+      updateAndDraw();
+    </script>
+  </body>
 </html>
