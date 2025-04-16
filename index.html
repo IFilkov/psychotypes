@@ -1,186 +1,217 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Шарики</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-    }
-
-    canvas {
-      display: block;
-      background: #f0f0f0;
-    }
-  </style>
-</head>
-<body>
-<canvas id="gameCanvas"></canvas>
-
-<script>
-  const canvas = document.getElementById('gameCanvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  const ballRadius = 10;
-  const types = ['A', 'B', 'D', 'G'];
-  const colors = {
-    A: 'red',
-    B: 'blue',
-    D: 'green',
-    G: 'orange',
-    red: 'red',
-    blue: 'blue'
-  };
-
-  class Ball {
-    constructor(x, y, direction) {
-      this.originalType = types[Math.floor(Math.random() * types.length)];
-      this.type = this.originalType;
-      this.color = colors[this.type];
-      this.speed = 1 + Math.random() * 2;
-      this.x = x;
-      this.y = y;
-      this.direction = direction;
-      this.vx = direction === 'right' ? this.speed : -this.speed;
-      this.vy = 0;
-  
-      this.score = 0;
-      this.visitedTypes = new Set([this.type]);
-      this.alreadyCollided = new Set(); // Сохраняем ID других шаров
-      this.id = Ball.idCounter++;
-    }
-
-    update() {
-      this.x += this.vx;
-      this.y += this.vy;
-    }
-
-    draw(ctx) {
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, ballRadius, 0, Math.PI * 2);
-      ctx.fillStyle = this.color;
-      ctx.fill();
-      ctx.closePath();
-  
-      ctx.fillStyle = 'white';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(this.type, this.x, this.y);
-    }
-
-    handleCollision(other) {
-      if (this === other || this.alreadyCollided.has(other.id)) return;
-  
-      const dx = this.x - other.x;
-      const dy = this.y - other.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-  
-      if (this.type === other.type && dist < ballRadius * 2) {
-        this.alreadyCollided.add(other.id);
-        other.alreadyCollided.add(this.id);
-  
-        const firstRed = Math.random() < 0.5;
-        const [redBall, blueBall] = firstRed ? [this, other] : [other, this];
-  
-        redBall.color = 'red';
-        blueBall.color = 'blue';
-  
-        redBall.score += 2;
-        blueBall.score += 1;
-  
-        redBall.advanceType();
-        blueBall.advanceType();
-  
-        redBall.findTarget();
-        blueBall.findTarget();
-  
-        console.log(`⚪ Шарик ${redBall.originalType} стал красным и получил 2 очка. Счет: ${redBall.score}`);
-        console.log(`🔵 Шарик ${blueBall.originalType} стал синим и получил 1 очко. Счет: ${blueBall.score}`);
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ball Simulation</title>
+    <style>
+      canvas {
+        background: #f0f0f0;
+        display: block;
+        margin: auto;
+        border: 1px solid #ccc;
       }
-    }
+    </style>
+  </head>
+  <body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
 
-    advanceType() {
-      const remaining = types.filter(t => !this.visitedTypes.has(t));
-      if (remaining.length > 0) {
-        this.type = remaining[0];
-        this.visitedTypes.add(this.type);
-        this.color = colors[this.type];
-      }
-    }
+      const types = ["A", "B", "D", "G"];
+      let balls = [];
+      let round = 1;
+      let gameRunning = true;
 
-    findTarget() {
-      let minDist = Infinity;
-      let target = null;
-  
-      for (let b of balls) {
-        if (
-          b !== this &&
-          b.type === this.type &&
-          !this.alreadyCollided.has(b.id)
-        ) {
-          const dx = b.x - this.x;
-          const dy = b.y - this.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < minDist) {
-            minDist = dist;
-            target = b;
+      function spawnBalls() {
+        balls = [];
+        const typeCount = 18;
+        types.forEach((type) => {
+          for (let i = 0; i < typeCount; i++) {
+            const id = `${type}_${i}`;
+            balls.push({
+              id,
+              type,
+              x: Math.random() * 400 + 100,
+              y: Math.random() * 400 + 100,
+              vx: Math.random() * 4 - 2,
+              vy: Math.random() * 4 - 2,
+              color: "gray",
+              score: 0,
+              visitedTypes: new Set([type]),
+              cycleDone: false,
+              targetId: null,
+              group: null,
+            });
           }
+        });
+        assignTargets();
+      }
+
+      function assignTargets() {
+        balls.forEach((ball) => {
+          if (ball.cycleDone) return;
+          const others = balls.filter(
+            (b) => b.id !== ball.id && !ball.visitedTypes.has(b.type)
+          );
+          if (others.length > 0) {
+            let closest = others[0];
+            let minDist = distance(ball, closest);
+            for (let b of others) {
+              const dist = distance(ball, b);
+              if (dist < minDist) {
+                minDist = dist;
+                closest = b;
+              }
+            }
+            ball.targetId = closest.id;
+          } else {
+            ball.cycleDone = true;
+            ball.vx = 0;
+            ball.vy = 0;
+            ball.targetId = null;
+          }
+        });
+      }
+
+      function distance(a, b) {
+        return Math.hypot(a.x - b.x, a.y - b.y);
+      }
+
+      function updateBalls() {
+        balls.forEach((ball) => {
+          if (ball.cycleDone || !ball.targetId) return;
+
+          const target = balls.find((b) => b.id === ball.targetId);
+          if (!target) return;
+
+          const dx = target.x - ball.x;
+          const dy = target.y - ball.y;
+          const dist = Math.hypot(dx, dy);
+          const speed = 1.5;
+
+          if (dist < 10) {
+            ball.score += 1;
+            ball.visitedTypes.add(target.type);
+            assignTargets();
+          } else {
+            ball.vx = (dx / dist) * speed;
+            ball.vy = (dy / dist) * speed;
+          }
+
+          ball.x += ball.vx;
+          ball.y += ball.vy;
+        });
+      }
+
+      function drawBalls() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        balls.forEach((ball) => {
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, 8, 0, Math.PI * 2);
+          ctx.fillStyle = ball.color;
+          ctx.fill();
+          ctx.stroke();
+        });
+      }
+
+      function checkRoundEnd() {
+        if (gameRunning && balls.every((b) => b.cycleDone)) {
+          gameRunning = false;
+          setTimeout(() => {
+            if (round === 1) {
+              handleEndOfFirstRound();
+            } else if (round === 2) {
+              handleEndOfSecondRound();
+            }
+          }, 1000);
         }
       }
-  
-      if (target) {
-        const dx = target.x - this.x;
-        const dy = target.y - this.y;
-        const mag = Math.sqrt(dx * dx + dy * dy);
-  
-        this.vx = (dx / mag) * this.speed;
-        this.vy = (dy / mag) * this.speed;
+
+      function handleEndOfFirstRound() {
+        // Удаление шаров с наименьшим количеством очков
+        const minScore = Math.min(...balls.map((b) => b.score));
+        balls = balls.filter((b) => b.score > minScore);
+        round++;
+        resetBallsForNewRound();
+        gameRunning = true;
       }
-    }
-  }
-  
-  Ball.idCounter = 0;
-  
 
-  
-  const balls = [];
-
-  function spawnBalls() {
-    const spacing = canvas.height / 7;
-    for (let i = 1; i <= 6; i++) {
-      let yPos = spacing * i;
-      balls.push(new Ball(0, yPos, 'right'));
-      balls.push(new Ball(canvas.width, yPos, 'left'));
-    }
-  }
-
-  function checkCollisions() {
-    for (let i = 0; i < balls.length; i++) {
-      for (let j = i + 1; j < balls.length; j++) {
-        balls[i].handleCollision(balls[j]);
+      function handleEndOfSecondRound() {
+        groupBallsByScore();
+        gameRunning = false;
       }
-    }
-  }
 
-  function updateAndDraw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+      function resetBallsForNewRound() {
+        balls.forEach((ball) => {
+          ball.visitedTypes = new Set([ball.type]);
+          ball.cycleDone = false;
+          ball.targetId = null;
+          ball.vx = Math.random() * 4 - 2;
+          ball.vy = Math.random() * 4 - 2;
+          ball.group = null;
+        });
+        assignTargets();
+      }
 
-    for (let ball of balls) {
-      ball.update();
-      ball.draw(ctx);
-    }
+      function groupBallsByScore() {
+        balls.forEach((ball) => {
+          if (ball.score <= 3) {
+            ball.color = "purple";
+            ball.group = "low";
+          } else if (ball.score === 4) {
+            ball.color = "green";
+            ball.group = "medium";
+          } else if (ball.score <= 6) {
+            ball.color = "blue";
+            ball.group = "good";
+          } else {
+            ball.color = "red";
+            ball.group = "high";
+          }
+        });
 
-    checkCollisions();
-    requestAnimationFrame(updateAndDraw);
-  }
+        const positions = {
+          low: { x: 100, y: 100 },
+          medium: { x: 700, y: 100 },
+          good: { x: 100, y: 500 },
+          high: { x: 700, y: 500 },
+        };
 
-  spawnBalls();
-  updateAndDraw();
-</script>
-</body>
+        const groupCounts = {
+          low: 0,
+          medium: 0,
+          good: 0,
+          high: 0,
+        };
+
+        balls.forEach((ball) => {
+          const group = ball.group;
+          const pos = positions[group];
+          const index = groupCounts[group];
+          const row = Math.floor(index / 10);
+          const col = index % 10;
+
+          ball.x = pos.x + col * 15;
+          ball.y = pos.y + row * 15;
+          ball.vx = 0;
+          ball.vy = 0;
+
+          groupCounts[group]++;
+        });
+      }
+
+      function gameLoop() {
+        if (gameRunning) {
+          updateBalls();
+          checkRoundEnd();
+        }
+        drawBalls();
+        requestAnimationFrame(gameLoop);
+      }
+
+      spawnBalls();
+      gameLoop();
+    </script>
+  </body>
 </html>
