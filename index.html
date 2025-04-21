@@ -47,23 +47,58 @@
         }
 
         draw() {
-          ctx.beginPath();
-          ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-          ctx.fillStyle = this.color;
-          ctx.fill();
-          ctx.strokeStyle = "black";
-          ctx.lineWidth = 2;
-          ctx.stroke();
-          ctx.fillStyle = "white";
-          ctx.font = "10px Arial";
-          ctx.fillText(`${this.score} | ${this.hp}`, this.x - 13, this.y + 3);
-          ctx.closePath();
+          /*  if (this.hp <= 0) {
+              // Рисуем черный прямоугольник на месте шарика
+              ctx.fillStyle = "black";
+              ctx.fillRect(this.x - 5, this.y - 20, 10, 40); // Центрируем по x и y
+            }*/
+          if (this.hp <= 0) {
+            const width = 30;
+            const height = 40;
+            const radius = 8;
+
+            // Центрировать прямоугольник
+            const x = this.x - width / 2;
+            const y = this.y - height / 2;
+
+            // Нарисовать закруглённый прямоугольник
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height);
+            ctx.lineTo(x, y + height);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+
+            ctx.fillStyle = "black";
+            ctx.fill();
+
+            // Добавить надпись RIP
+            ctx.fillStyle = "white";
+            ctx.font = "bold 12px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("RIP", this.x, this.y + 5);
+          } else {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.strokeStyle = "black";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = "white";
+            ctx.font = "10px Arial";
+            ctx.fillText(`${this.score} | ${this.hp}`, this.x - 13, this.y + 3);
+            ctx.closePath();
+          }
         }
         /*
-        update() {
-          this.x += this.dx;
-          this.y += this.dy;
-        }*/
+              update() {
+                this.x += this.dx;
+                this.y += this.dy;
+              }*/
         update() {
           if (this.hp <= 0) return; // Мёртвый шарик не двигается
 
