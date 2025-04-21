@@ -209,6 +209,32 @@
         }
       }
 
+      function stopGame() {
+        // Например, остановка анимации
+        /*cancelAnimationFrame(animationId);*/
+        console.log("🎮 Игра остановлена");
+      }
+
+      function checkGameState() {
+        const aliveBalls = balls.filter((b) => b.hp > 0);
+
+        console.clear(); // очищаем консоль перед новым выводом
+        balls.forEach((b) => {
+          const status = b.hp > 0 ? "Живой" : "Мертвый";
+          console.log(`ID: ${b.id}, Очки: ${b.score}, Статус: ${status}`);
+        });
+
+        if (aliveBalls.length === 1) {
+          console.log(
+            `🏆 Победитель: ID ${aliveBalls[0].id} с ${aliveBalls[0].score} очками!`
+          );
+          stopGame(); // Остановить игру
+        } else if (aliveBalls.length === 0) {
+          console.log("☠️ Все погибли. Победителей нет.");
+          stopGame(); // Остановить игру
+        }
+      }
+
       function resolveCollision(ball1, ball2) {
         if (ball1.hp <= 0 || ball2.hp <= 0) return;
 
@@ -249,6 +275,7 @@
           ball1.spreadTimer = 60;
           ball2.spreadTimer = 60;
         }
+        checkGameState();
       }
 
       function regroupToCenter() {
