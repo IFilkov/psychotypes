@@ -46,12 +46,7 @@
           }
         }
 
-        draw() {
-          /*  if (this.hp <= 0) {
-              // Рисуем черный прямоугольник на месте шарика
-              ctx.fillStyle = "black";
-              ctx.fillRect(this.x - 5, this.y - 20, 10, 40); // Центрируем по x и y
-            }*/
+        /*      draw() {
           if (this.hp <= 0) {
             const width = 30;
             const height = 40;
@@ -93,12 +88,45 @@
             ctx.fillText(`${this.score} | ${this.hp}`, this.x - 13, this.y + 3);
             ctx.closePath();
           }
-        }
+        }*/
         /*
               update() {
                 this.x += this.dx;
                 this.y += this.dy;
               }*/
+        draw() {
+          if (this.hp <= 0) {
+            // Рисуем гробик
+            ctx.fillStyle = "black";
+            ctx.beginPath();
+            ctx.moveTo(this.x - 15, this.y); // верхний левый угол
+            ctx.arcTo(this.x + 15, this.y, this.x + 15, this.y + 40, 10); // верхний правый скруглённый угол
+            ctx.lineTo(this.x + 15, this.y + 40);
+            ctx.lineTo(this.x - 15, this.y + 40);
+            ctx.closePath();
+            ctx.fill();
+
+            // Надпись RIP
+            ctx.fillStyle = "white";
+            ctx.font = "12px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("RIP", this.x, this.y + 25);
+          } else {
+            // Рисуем живой шар
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.stroke();
+
+            // Отображаем очки
+            ctx.fillStyle = "black";
+            ctx.font = "10px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(this.score, this.x, this.y + 3);
+          }
+        }
+
         update() {
           if (this.hp <= 0) return; // Мёртвый шарик не двигается
 
