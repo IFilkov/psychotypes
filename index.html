@@ -270,6 +270,19 @@
         }
       }
 
+      function checkPlayerVictory(winnerBall) {
+        if (!winnerBall) {
+          console.log("Никто не победил.");
+          return;
+        }
+
+        if (selectedBalls.includes(winnerBall)) {
+          console.log("Игрок победил!");
+        } else {
+          console.log("Игрок проиграл.");
+        }
+      }
+
       function stopGame() {
         // Например, остановка анимации
         /*cancelAnimationFrame(animationId);*/
@@ -286,6 +299,8 @@
         });
 
         if (aliveBalls.length === 1) {
+          const winner = aliveBalls[0];
+          checkPlayerVictory(winner);
           console.log(
             `🏆 Победитель: ID ${aliveBalls[0].id} с ${aliveBalls[0].score} очками!`
           );
