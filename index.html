@@ -51,54 +51,6 @@
           }
         }
 
-        /*      draw() {
-          if (this.hp <= 0) {
-            const width = 30;
-            const height = 40;
-            const radius = 8;
-
-            // Центрировать прямоугольник
-            const x = this.x - width / 2;
-            const y = this.y - height / 2;
-
-            // Нарисовать закруглённый прямоугольник
-            ctx.beginPath();
-            ctx.moveTo(x + radius, y);
-            ctx.lineTo(x + width - radius, y);
-            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-            ctx.lineTo(x + width, y + height);
-            ctx.lineTo(x, y + height);
-            ctx.lineTo(x, y + radius);
-            ctx.quadraticCurveTo(x, y, x + radius, y);
-            ctx.closePath();
-
-            ctx.fillStyle = "black";
-            ctx.fill();
-
-            // Добавить надпись RIP
-            ctx.fillStyle = "white";
-            ctx.font = "bold 12px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText("RIP", this.x, this.y + 5);
-          } else {
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-            ctx.fillStyle = this.color;
-            ctx.fill();
-            ctx.strokeStyle = "black";
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            ctx.fillStyle = "white";
-            ctx.font = "10px Arial";
-            ctx.fillText(`${this.score} | ${this.hp}`, this.x - 13, this.y + 3);
-            ctx.closePath();
-          }
-        }*/
-        /*
-              update() {
-                this.x += this.dx;
-                this.y += this.dy;
-              }*/
         draw() {
           if (this.selectedByPlayer) {
             ctx.fillStyle = "green";
@@ -203,37 +155,14 @@
             y = canvas.height;
           }
           const ball = new Ball(x, y, type);
+          if (playerSelectedBallIds.includes(ball.id)) {
+            ball.selectedByPlayer = true;
+          }
           ball.moveTo(canvas.width / 2, canvas.height / 2);
           balls.push(ball);
         }
       }
 
-      /*     canvas.addEventListener("click", function (e) {
-        console.log("click");
-        // Ограничение по времени и количеству выбранных шаров
-        const currentTime = Date.now();
-        if (currentTime - selectionStartTime > 4000) return;
-        if (selectedBalls.length >= 4) return;
-
-        const rect = canvas.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const clickY = e.clientY - rect.top;
-
-        for (let ball of balls) {
-          if (!ball.alive || ball.isSelectedByPlayer) continue;
-
-          const dx = ball.x - clickX;
-          const dy = ball.y - clickY;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-
-          if (distance < ball.radius + 5) {
-            ball.isSelectedByPlayer = true;
-            selectedBalls.push(ball);
-            console.log(`Вы выбрали шар ${ball.id}`);
-            break; // выбираем только один шар за клик
-          }
-        }
-      });*/
       let startTime = Date.now();
       canvas.addEventListener("mousemove", (e) => {
         if (Date.now() - startTime > 4000) return; // Только первые 4 секунды
@@ -269,6 +198,8 @@
           }
         }
       }
+      winnerBall = [];
+      const playerSelectedBallIds = [];
 
       function checkPlayerVictory(winnerBall) {
         if (!winnerBall) {
@@ -276,10 +207,20 @@
           return;
         }
 
-        if (selectedBalls.includes(winnerBall)) {
-          console.log("Игрок победил!");
+        console.log("🏁 Победивший шар:", winnerBall.id);
+        console.log(
+          "🎯 Выбранные пользователем:",
+          selectedBalls.map((b) => b.id)
+        );
+
+        const winnerIsPlayer = selectedBalls.map(
+          (ball) => ball.id === winnerBall.id
+        );
+
+        if (winnerIsPlayer) {
+          console.log("✅ Игрок победил!");
         } else {
-          console.log("Игрок проиграл.");
+          console.log("❌ Игрок проиграл.");
         }
       }
 
@@ -298,8 +239,9 @@
           console.log(`ID: ${b.id}, Очки: ${b.score}, Статус: ${status}`);
         });
 
-        if (aliveBalls.length === 1) {
+        /*   if (aliveBalls.length === 1) {
           const winner = aliveBalls[0];
+          winnerBall = aliveBalls[0];
           checkPlayerVictory(winner);
           console.log(
             `🏆 Победитель: ID ${aliveBalls[0].id} с ${aliveBalls[0].score} очками!`
@@ -308,6 +250,20 @@
         } else if (aliveBalls.length === 0) {
           console.log("☠️ Все погибли. Победителей нет.");
           stopGame(); // Остановить игру
+        }*/
+        if (aliveBalls.length === 1) {
+          const winner = aliveBalls[0];
+          winnerBall = winner;
+          const selectedIds = playerSelectedBalls.map((b) => b.id);
+          if (selectedIds.includes(winner.id)) {
+            console.log("🏆 Победил выбранный вами шар! Вы победили!");
+          } else {
+            console.log("❌ Победил чужой шар. Вы проиграли.");
+          }
+          stopGame();
+        } else if (aliveBalls.length === 0) {
+          console.log("☠️ Все погибли. Победителей нет.");
+          stopGame();
         }
       }
 
@@ -387,28 +343,6 @@
         requestAnimationFrame(gameLoop);
       }
 
-      /*    function handleClick(event) {
-        const rect = canvas.getBoundingClientRect();
-        const clickX = event.clientX - rect.left;
-        const clickY = event.clientY - rect.top;
-
-        for (const ball of balls) {
-          if (!ball.isAlive) continue;
-
-          const dx = ball.x - clickX;
-          const dy = ball.y - clickY;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-
-          if (distance < ball.radius + 5) {
-            // добавляем допуск
-            if (!ball.selectedByPlayer && playerSelectedBalls.length < 4) {
-              ball.selectedByPlayer = true;
-              playerSelectedBalls.push(ball.id);
-              console.log("Выбран шар с ID:", ball.id);
-            }
-          }
-        }
-      }*/
       function handleClick(event) {
         console.log("hendle");
         const rect = canvas.getBoundingClientRect();
