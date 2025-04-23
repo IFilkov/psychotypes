@@ -1,186 +1,480 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Шарики</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ball Game</title>
+  </head>
+  <body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
 
-    canvas {
-      display: block;
-      background: #f0f0f0;
-    }
-  </style>
-</head>
-<body>
-<canvas id="gameCanvas"></canvas>
+    <div id="ui">
+      <button id="startBtn">▶ Начать игру</button>
+      <div id="endScreen" style="display: none">
+        <h2 id="endMessage"></h2>
+        <button id="restartBtn">🔁 Сыграть ещё раз</button>
+      </div>
+    </div>
 
-<script>
-  const canvas = document.getElementById('gameCanvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  const ballRadius = 10;
-  const types = ['A', 'B', 'D', 'G'];
-  const colors = {
-    A: 'red',
-    B: 'blue',
-    D: 'green',
-    G: 'orange',
-    red: 'red',
-    blue: 'blue'
-  };
-
-  class Ball {
-    constructor(x, y, direction) {
-      this.originalType = types[Math.floor(Math.random() * types.length)];
-      this.type = this.originalType;
-      this.color = colors[this.type];
-      this.speed = 1 + Math.random() * 2;
-      this.x = x;
-      this.y = y;
-      this.direction = direction;
-      this.vx = direction === 'right' ? this.speed : -this.speed;
-      this.vy = 0;
-  
-      this.score = 0;
-      this.visitedTypes = new Set([this.type]);
-      this.alreadyCollided = new Set(); // Сохраняем ID других шаров
-      this.id = Ball.idCounter++;
-    }
-
-    update() {
-      this.x += this.vx;
-      this.y += this.vy;
-    }
-
-    draw(ctx) {
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, ballRadius, 0, Math.PI * 2);
-      ctx.fillStyle = this.color;
-      ctx.fill();
-      ctx.closePath();
-  
-      ctx.fillStyle = 'white';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(this.type, this.x, this.y);
-    }
-
-    handleCollision(other) {
-      if (this === other || this.alreadyCollided.has(other.id)) return;
-  
-      const dx = this.x - other.x;
-      const dy = this.y - other.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-  
-      if (this.type === other.type && dist < ballRadius * 2) {
-        this.alreadyCollided.add(other.id);
-        other.alreadyCollided.add(this.id);
-  
-        const firstRed = Math.random() < 0.5;
-        const [redBall, blueBall] = firstRed ? [this, other] : [other, this];
-  
-        redBall.color = 'red';
-        blueBall.color = 'blue';
-  
-        redBall.score += 2;
-        blueBall.score += 1;
-  
-        redBall.advanceType();
-        blueBall.advanceType();
-  
-        redBall.findTarget();
-        blueBall.findTarget();
-  
-        console.log(`⚪ Шарик ${redBall.originalType} стал красным и получил 2 очка. Счет: ${redBall.score}`);
-        console.log(`🔵 Шарик ${blueBall.originalType} стал синим и получил 1 очко. Счет: ${blueBall.score}`);
+    <style>
+      canvas {
+        background-color: #eee;
+        display: block;
+        margin: auto;
       }
-    }
 
-    advanceType() {
-      const remaining = types.filter(t => !this.visitedTypes.has(t));
-      if (remaining.length > 0) {
-        this.type = remaining[0];
-        this.visitedTypes.add(this.type);
-        this.color = colors[this.type];
+      #ui {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        display: flex;
+        justify-content: center;
+        align-items: center;
       }
-    }
 
-    findTarget() {
-      let minDist = Infinity;
-      let target = null;
-  
-      for (let b of balls) {
-        if (
-          b !== this &&
-          b.type === this.type &&
-          !this.alreadyCollided.has(b.id)
-        ) {
-          const dx = b.x - this.x;
-          const dy = b.y - this.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < minDist) {
-            minDist = dist;
-            target = b;
+      #startBtn,
+      #restartBtn {
+        font-size: 20px;
+        padding: 12px 24px;
+        cursor: pointer;
+        border: none;
+        background: #4caf50;
+        color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        transition: background 0.3s;
+        pointer-events: auto;
+      }
+
+      #startBtn:hover,
+      #restartBtn:hover {
+        background: #45a049;
+      }
+
+      #startBtn {
+        pointer-events: auto;
+      }
+
+      #endScreen {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 40px 30px;
+        border-radius: 20px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        animation: fadeInZoom 0.6s ease forwards;
+        pointer-events: auto;
+        z-index: 10;
+      }
+
+      #endMessage {
+        font-size: 28px;
+        margin-bottom: 25px;
+        color: #333;
+        text-align: center;
+      }
+
+      @keyframes fadeInZoom {
+        from {
+          opacity: 0;
+          transform: scale(0.5);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    </style>
+
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+
+      const startBtn = document.getElementById("startBtn");
+      const endScreen = document.getElementById("endScreen");
+      const endMessage = document.getElementById("endMessage");
+      const restartBtn = document.getElementById("restartBtn");
+
+      let selectionPhase = false;
+      let selectionTimer = 240; // 4 секунды
+      let gameStarted = false;
+      let winnerBall = null;
+
+      startBtn.onclick = () => {
+        startBtn.style.display = "none";
+        startGame();
+      };
+
+      restartBtn.onclick = () => {
+        endScreen.style.display = "none";
+        startGame();
+      };
+
+      function startGame() {
+        playerSelectedBalls.length = 0;
+        balls = [];
+        spawnBalls();
+        selectionPhase = true;
+        selectionTimer = 240;
+        roundActive = false;
+        regroupTimer = 0;
+        gameStarted = true;
+        console.log("🚀 Выберите 4 шара. Игра скоро начнётся...");
+      }
+
+      let selectionStartTime = Date.now();
+      let selectedBalls = [];
+      let playerSelectedBalls = [];
+
+      class Ball {
+        constructor(x, y, type) {
+          this.x = x;
+          this.y = y;
+          this.radius = 15;
+          this.color = this.getColorByType(type);
+          this.type = type;
+          this.dx = 0;
+          this.dy = 0;
+          this.score = 0;
+          this.id = Math.random().toString(36).substr(2, 9);
+          this.hp = 100;
+          this.mode = "toCenter"; // варианты: 'toCenter', 'spread'
+          this.spreadTimer = 0;
+          this.selectedByPlayer = false;
+        }
+
+        getColorByType(type) {
+          switch (type) {
+            case "A":
+              return "green";
+            case "B":
+              return "orange";
+            case "D":
+              return "purple";
+            case "G":
+              return "pink";
+          }
+        }
+
+        draw() {
+          if (this.selectedByPlayer) {
+            ctx.fillStyle = "green";
+            ctx.font = "16px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("R", this.x, this.y);
+          }
+          if (this.hp <= 0) {
+            // Рисуем гробик
+            ctx.fillStyle = "black";
+            ctx.beginPath();
+            ctx.moveTo(this.x - 15, this.y); // верхний левый угол
+            ctx.arcTo(this.x + 15, this.y, this.x + 15, this.y + 40, 10); // верхний правый скруглённый угол
+            ctx.lineTo(this.x + 15, this.y + 40);
+            ctx.lineTo(this.x - 15, this.y + 40);
+            ctx.closePath();
+            ctx.fill();
+
+            // Надпись RIP
+            ctx.fillStyle = "white";
+            ctx.font = "12px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("RIP", this.x, this.y + 25);
+          } else {
+            // Рисуем живой шар
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            // проверка на выбор
+            ctx.fillStyle = this.selectedByPlayer ? "lightblue" : this.color;
+            /* ctx.fillStyle = this.color;*/
+            ctx.fill();
+            ctx.stroke();
+
+            // Отображаем очки
+            ctx.fillStyle = "black";
+            ctx.font = "10px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(this.score, this.x, this.y + 3);
+          }
+        }
+
+        update() {
+          if (this.hp <= 0) return; // Мёртвый шарик не двигается
+
+          if (this.mode === "toCenter") {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const dx = centerX - this.x;
+            const dy = centerY - this.y;
+            const dist = Math.hypot(dx, dy);
+
+            const speed = 1.5; // скорость движения к центру
+
+            if (dist > 1) {
+              this.dx = (dx / dist) * speed;
+              this.dy = (dy / dist) * speed;
+              this.x += this.dx;
+              this.y += this.dy;
+            } else {
+              this.dx = 0;
+              this.dy = 0;
+            }
+          } else if (this.mode === "spread") {
+            this.x += this.dx;
+            this.y += this.dy;
+
+            this.spreadTimer--;
+            if (this.spreadTimer <= 0) {
+              this.mode = "toCenter";
+            }
+          }
+        }
+
+        moveTo(targetX, targetY, speed = 1.5) {
+          const angle = Math.atan2(targetY - this.y, targetX - this.x);
+          this.dx = Math.cos(angle) * speed;
+          this.dy = Math.sin(angle) * speed;
+        }
+      }
+
+      const types = ["A", "B", "D", "G"];
+      let balls = [];
+
+      function spawnBalls(n = 16) {
+        balls = [];
+        for (let i = 0; i < n; i++) {
+          const type = types[i % types.length];
+          let x, y;
+          const edge = Math.floor(Math.random() * 4);
+          if (edge === 0) {
+            x = 0;
+            y = Math.random() * canvas.height;
+          } else if (edge === 1) {
+            x = canvas.width;
+            y = Math.random() * canvas.height;
+          } else if (edge === 2) {
+            x = Math.random() * canvas.width;
+            y = 0;
+          } else {
+            x = Math.random() * canvas.width;
+            y = canvas.height;
+          }
+          const ball = new Ball(x, y, type);
+          if (playerSelectedBallIds.includes(ball.id)) {
+            ball.selectedByPlayer = true;
+          }
+          ball.moveTo(canvas.width / 2, canvas.height / 2);
+          balls.push(ball);
+        }
+      }
+
+      let startTime = Date.now();
+      canvas.addEventListener("mousemove", (e) => {
+        if (Date.now() - startTime > 4000) return; // Только первые 4 секунды
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        for (const ball of balls) {
+          if (ball.hp <= 0 || ball.selectedByPlayer) continue; // Не выбираем мёртвых или уже выбранных
+          const dx = mouseX - ball.x;
+          const dy = mouseY - ball.y;
+          if (Math.sqrt(dx * dx + dy * dy) < ball.radius) {
+            if (selectedBalls.length < 4) {
+              ball.selectedByPlayer = true;
+              selectedBalls.push(ball);
+              break;
+            }
+          }
+        }
+      });
+
+      function detectCollisions() {
+        for (let i = 0; i < balls.length; i++) {
+          for (let j = i + 1; j < balls.length; j++) {
+            const b1 = balls[i];
+            const b2 = balls[j];
+            const dx = b1.x - b2.x;
+            const dy = b1.y - b2.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < b1.radius + b2.radius) {
+              resolveCollision(b1, b2);
+            }
           }
         }
       }
-  
-      if (target) {
-        const dx = target.x - this.x;
-        const dy = target.y - this.y;
-        const mag = Math.sqrt(dx * dx + dy * dy);
-  
-        this.vx = (dx / mag) * this.speed;
-        this.vy = (dy / mag) * this.speed;
+      winnerBall = [];
+      const playerSelectedBallIds = [];
+
+      function checkPlayerVictory(winnerBall) {
+        if (!winnerBall) {
+          console.log("Никто не победил.");
+          return;
+        }
+
+        console.log("🏁 Победивший шар:", winnerBall.id);
+        console.log(
+          "🎯 Выбранные пользователем:",
+          selectedBalls.map((b) => b.id)
+        );
+
+        const winnerIsPlayer = selectedBalls.map(
+          (ball) => ball.id === winnerBall.id
+        );
+
+        if (winnerIsPlayer) {
+          console.log("✅ Игрок победил!");
+        } else {
+          console.log("❌ Игрок проиграл.");
+        }
       }
-    }
-  }
-  
-  Ball.idCounter = 0;
-  
 
-  
-  const balls = [];
-
-  function spawnBalls() {
-    const spacing = canvas.height / 7;
-    for (let i = 1; i <= 6; i++) {
-      let yPos = spacing * i;
-      balls.push(new Ball(0, yPos, 'right'));
-      balls.push(new Ball(canvas.width, yPos, 'left'));
-    }
-  }
-
-  function checkCollisions() {
-    for (let i = 0; i < balls.length; i++) {
-      for (let j = i + 1; j < balls.length; j++) {
-        balls[i].handleCollision(balls[j]);
+      function stopGame() {
+        roundActive = false;
+        selectionPhase = false;
+        gameStarted = false;
       }
-    }
-  }
 
-  function updateAndDraw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+      function checkGameState() {
+        const aliveBalls = balls.filter((b) => b.hp > 0);
+        console.clear();
 
-    for (let ball of balls) {
-      ball.update();
-      ball.draw(ctx);
-    }
+        if (aliveBalls.length === 1) {
+          const winner = aliveBalls[0];
+          winnerBall = winner;
+          const selectedIds = playerSelectedBalls.map((b) => b.id);
+          const win = selectedIds.includes(winner.id);
 
-    checkCollisions();
-    requestAnimationFrame(updateAndDraw);
-  }
+          endMessage.innerText = win;
+          /* ? "🎉 Победа! Ваш шар выжил!"
+            : "💥 Поражение. Победил чужой шар.";*/
+          endMessage.innerHTML = win
+            ? `🎉 Победа! Ваш шар выжил!<br>ID: ${winner.id}, Очки: ${winner.score}`
+            : `💥 Поражение. Победил чужой шар.<br>ID: ${winner.id}, Очки: ${winner.score}`;
 
-  spawnBalls();
-  updateAndDraw();
-</script>
-</body>
+          showEndScreen();
+        } else if (aliveBalls.length === 0) {
+          endMessage.innerText = "☠️ Никто не выжил. Игра окончена.";
+          showEndScreen();
+        }
+      }
+
+      function showEndScreen() {
+        endScreen.style.display = "block";
+        stopGame();
+      }
+
+      function resolveCollision(ball1, ball2) {
+        if (ball1.hp <= 0 || ball2.hp <= 0) return;
+
+        // Расстояние между центрами
+        const dx = ball2.x - ball1.x;
+        const dy = ball2.y - ball1.y;
+        const distance = Math.hypot(dx, dy);
+
+        if (distance < ball1.radius + ball2.radius) {
+          // --- Урон ---
+          const damage = Math.floor(Math.random() * 20) + 5; // от 5 до 25
+          ball1.hp -= damage;
+          ball2.hp -= damage;
+
+          // --- Очки ---
+          ball1.score += 1;
+          ball2.score += 1;
+
+          // --- Победитель увеличивается ---
+          if (ball1.score > ball2.score) {
+            ball1.radius += 1;
+          } else if (ball2.score > ball1.score) {
+            ball2.radius += 1;
+          }
+
+          // --- Расчёт направления отталкивания ---
+          const angle = Math.atan2(dy, dx);
+          const force = 3;
+
+          ball1.dx = -Math.cos(angle) * force;
+          ball1.dy = -Math.sin(angle) * force;
+          ball2.dx = Math.cos(angle) * force;
+          ball2.dy = Math.sin(angle) * force;
+
+          // Установить разбегание
+          ball1.mode = "spread";
+          ball2.mode = "spread";
+          ball1.spreadTimer = 60;
+          ball2.spreadTimer = 60;
+        }
+        checkGameState();
+      }
+
+      function regroupToCenter() {
+        for (let ball of balls) {
+          ball.moveTo(canvas.width / 2, canvas.height / 2);
+        }
+      }
+
+      let roundActive = true;
+      let regroupTimer = 0;
+
+      function gameLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let ball of balls) {
+          ball.update();
+          ball.draw();
+        }
+
+        if (!gameStarted) return requestAnimationFrame(gameLoop);
+
+        if (roundActive) {
+          detectCollisions();
+          if (balls.length <= 1) {
+            roundActive = false;
+            regroupTimer = 120;
+          }
+        } else {
+          regroupTimer--;
+          if (regroupTimer === 60) regroupToCenter();
+          if (regroupTimer <= 0 && balls.length > 1) {
+            roundActive = true;
+          }
+        }
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      function handleClick(event) {
+        console.log("hendle");
+        const rect = canvas.getBoundingClientRect();
+        const clickX = event.clientX - rect.left;
+        const clickY = event.clientY - rect.top;
+
+        for (const ball of balls) {
+          if (ball.hp <= 0 || ball.selectedByPlayer) continue;
+          // пропускаем мертвых
+
+          const dx = ball.x - clickX;
+          const dy = ball.y - clickY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < ball.radius + 5) {
+            if (!ball.selectedByPlayer && playerSelectedBalls.length < 4) {
+              ball.selectedByPlayer = true;
+
+              playerSelectedBalls.push(ball);
+              console.log(`Вы выбрали шар игрока: ID ${ball.id}`);
+            }
+            break;
+          }
+        }
+      }
+
+      spawnBalls();
+      gameLoop();
+      canvas.addEventListener("mousemove", handleClick);
+    </script>
+  </body>
 </html>
