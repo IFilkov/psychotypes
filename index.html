@@ -3,19 +3,128 @@
   <head>
     <meta charset="UTF-8" />
     <title>Ball Game</title>
+  </head>
+  <body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <div id="ui">
+      <button id="startBtn">▶ Начать игру</button>
+      <div id="endScreen" style="display: none">
+        <h2 id="endMessage"></h2>
+        <button id="restartBtn">🔁 Сыграть ещё раз</button>
+      </div>
+    </div>
+
     <style>
       canvas {
         background-color: #eee;
         display: block;
         margin: auto;
       }
+
+      #ui {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      #startBtn,
+      #restartBtn {
+        font-size: 20px;
+        padding: 12px 24px;
+        cursor: pointer;
+        border: none;
+        background: #4caf50;
+        color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        transition: background 0.3s;
+        pointer-events: auto;
+      }
+
+      #startBtn:hover,
+      #restartBtn:hover {
+        background: #45a049;
+      }
+
+      #startBtn {
+        pointer-events: auto;
+      }
+
+      #endScreen {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 40px 30px;
+        border-radius: 20px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        animation: fadeInZoom 0.6s ease forwards;
+        pointer-events: auto;
+        z-index: 10;
+      }
+
+      #endMessage {
+        font-size: 28px;
+        margin-bottom: 25px;
+        color: #333;
+        text-align: center;
+      }
+
+      @keyframes fadeInZoom {
+        from {
+          opacity: 0;
+          transform: scale(0.5);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
     </style>
-  </head>
-  <body>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
     <script>
       const canvas = document.getElementById("gameCanvas");
       const ctx = canvas.getContext("2d");
+
+      const startBtn = document.getElementById("startBtn");
+      const endScreen = document.getElementById("endScreen");
+      const endMessage = document.getElementById("endMessage");
+      const restartBtn = document.getElementById("restartBtn");
+
+      let selectionPhase = false;
+      let selectionTimer = 240; // 4 секунды
+      let gameStarted = false;
+      let winnerBall = null;
+
+      startBtn.onclick = () => {
+        startBtn.style.display = "none";
+        startGame();
+      };
+
+      restartBtn.onclick = () => {
+        endScreen.style.display = "none";
+        startGame();
+      };
+
+      function startGame() {
+        playerSelectedBalls.length = 0;
+        balls = [];
+        spawnBalls();
+        selectionPhase = true;
+        selectionTimer = 240;
+        roundActive = false;
+        regroupTimer = 0;
+        gameStarted = true;
+        console.log("🚀 Выберите 4 шара. Игра скоро начнётся...");
+      }
 
       let selectionStartTime = Date.now();
       let selectedBalls = [];
@@ -198,73 +307,50 @@
           }
         }
       }
-      winnerBall = [];
+      /*winnerBall = [];*/
       const playerSelectedBallIds = [];
 
-      function checkPlayerVictory(winnerBall) {
-        if (!winnerBall) {
-          console.log("Никто не победил.");
-          return;
-        }
-
-        console.log("🏁 Победивший шар:", winnerBall.id);
-        console.log(
-          "🎯 Выбранные пользователем:",
-          selectedBalls.map((b) => b.id)
-        );
-
-        const winnerIsPlayer = selectedBalls.map(
-          (ball) => ball.id === winnerBall.id
-        );
-
-        if (winnerIsPlayer) {
-          console.log("✅ Игрок победил!");
-        } else {
-          console.log("❌ Игрок проиграл.");
-        }
-      }
-
       function stopGame() {
-        // Например, остановка анимации
-        /*cancelAnimationFrame(animationId);*/
-        console.log("🎮 Игра остановлена");
+        roundActive = false;
+        selectionPhase = false;
+        gameStarted = false;
       }
 
       function checkGameState() {
         const aliveBalls = balls.filter((b) => b.hp > 0);
-
-        console.clear(); // очищаем консоль перед новым выводом
+        /* console.clear();*/
         balls.forEach((b) => {
           const status = b.hp > 0 ? "Живой" : "Мертвый";
           console.log(`ID: ${b.id}, Очки: ${b.score}, Статус: ${status}`);
         });
 
-        /*   if (aliveBalls.length === 1) {
-          const winner = aliveBalls[0];
-          winnerBall = aliveBalls[0];
-          checkPlayerVictory(winner);
-          console.log(
-            `🏆 Победитель: ID ${aliveBalls[0].id} с ${aliveBalls[0].score} очками!`
-          );
-          stopGame(); // Остановить игру
-        } else if (aliveBalls.length === 0) {
-          console.log("☠️ Все погибли. Победителей нет.");
-          stopGame(); // Остановить игру
-        }*/
         if (aliveBalls.length === 1) {
           const winner = aliveBalls[0];
           winnerBall = winner;
+
           const selectedIds = playerSelectedBalls.map((b) => b.id);
-          if (selectedIds.includes(winner.id)) {
-            console.log("🏆 Победил выбранный вами шар! Вы победили!");
-          } else {
-            console.log("❌ Победил чужой шар. Вы проиграли.");
-          }
-          stopGame();
+          const win = selectedIds.includes(winner.id);
+
+          endMessage.innerHTML = win
+            ? `🎉 Победа! Ваш шар выжил!<br>ID: ${winner.id}, Очки: ${winner.score}`
+            : `💥 Поражение. Победил чужой шар.<br>ID: ${winner.id}, Очки: ${winner.score}`;
+
+          console.log(
+            "🎯 Выбранные пользователем:",
+            playerSelectedBalls.map((b) => b.id)
+          );
+
+          showEndScreen();
         } else if (aliveBalls.length === 0) {
-          console.log("☠️ Все погибли. Победителей нет.");
-          stopGame();
+          endMessage.innerText = "☠️ Никто не выжил. Игра окончена.";
+          console.log("Никто не победил.");
+          showEndScreen();
         }
+      }
+
+      function showEndScreen() {
+        endScreen.style.display = "block";
+        stopGame();
       }
 
       function resolveCollision(ball1, ball2) {
@@ -325,6 +411,8 @@
           ball.update();
           ball.draw();
         }
+
+        if (!gameStarted) return requestAnimationFrame(gameLoop);
 
         if (roundActive) {
           detectCollisions();
