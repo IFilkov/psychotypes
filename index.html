@@ -1,186 +1,807 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Шарики</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ball Game</title>
+  </head>
+  <body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
 
-    canvas {
-      display: block;
-      background: #f0f0f0;
-    }
-  </style>
-</head>
-<body>
-<canvas id="gameCanvas"></canvas>
+    <div id="ui">
+      <button id="startBtn">▶ Начать игру</button>
+      <div id="endScreen" style="display: none">
+        <h2 id="endMessage"></h2>
+        <button id="restartBtn">🔁 Сыграть ещё раз</button>
+      </div>
+    </div>
 
-<script>
-  const canvas = document.getElementById('gameCanvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  const ballRadius = 10;
-  const types = ['A', 'B', 'D', 'G'];
-  const colors = {
-    A: 'red',
-    B: 'blue',
-    D: 'green',
-    G: 'orange',
-    red: 'red',
-    blue: 'blue'
-  };
-
-  class Ball {
-    constructor(x, y, direction) {
-      this.originalType = types[Math.floor(Math.random() * types.length)];
-      this.type = this.originalType;
-      this.color = colors[this.type];
-      this.speed = 1 + Math.random() * 2;
-      this.x = x;
-      this.y = y;
-      this.direction = direction;
-      this.vx = direction === 'right' ? this.speed : -this.speed;
-      this.vy = 0;
-  
-      this.score = 0;
-      this.visitedTypes = new Set([this.type]);
-      this.alreadyCollided = new Set(); // Сохраняем ID других шаров
-      this.id = Ball.idCounter++;
-    }
-
-    update() {
-      this.x += this.vx;
-      this.y += this.vy;
-    }
-
-    draw(ctx) {
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, ballRadius, 0, Math.PI * 2);
-      ctx.fillStyle = this.color;
-      ctx.fill();
-      ctx.closePath();
-  
-      ctx.fillStyle = 'white';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(this.type, this.x, this.y);
-    }
-
-    handleCollision(other) {
-      if (this === other || this.alreadyCollided.has(other.id)) return;
-  
-      const dx = this.x - other.x;
-      const dy = this.y - other.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-  
-      if (this.type === other.type && dist < ballRadius * 2) {
-        this.alreadyCollided.add(other.id);
-        other.alreadyCollided.add(this.id);
-  
-        const firstRed = Math.random() < 0.5;
-        const [redBall, blueBall] = firstRed ? [this, other] : [other, this];
-  
-        redBall.color = 'red';
-        blueBall.color = 'blue';
-  
-        redBall.score += 2;
-        blueBall.score += 1;
-  
-        redBall.advanceType();
-        blueBall.advanceType();
-  
-        redBall.findTarget();
-        blueBall.findTarget();
-  
-        console.log(`⚪ Шарик ${redBall.originalType} стал красным и получил 2 очка. Счет: ${redBall.score}`);
-        console.log(`🔵 Шарик ${blueBall.originalType} стал синим и получил 1 очко. Счет: ${blueBall.score}`);
+    <style>
+      canvas {
+        background-color: #eee;
+        display: block;
+        margin: auto;
       }
-    }
 
-    advanceType() {
-      const remaining = types.filter(t => !this.visitedTypes.has(t));
-      if (remaining.length > 0) {
-        this.type = remaining[0];
-        this.visitedTypes.add(this.type);
-        this.color = colors[this.type];
+      #ui {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        display: flex;
+        justify-content: center;
+        align-items: center;
       }
-    }
 
-    findTarget() {
-      let minDist = Infinity;
-      let target = null;
-  
-      for (let b of balls) {
-        if (
-          b !== this &&
-          b.type === this.type &&
-          !this.alreadyCollided.has(b.id)
-        ) {
-          const dx = b.x - this.x;
-          const dy = b.y - this.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < minDist) {
-            minDist = dist;
-            target = b;
+      #startBtn,
+      #restartBtn {
+        width: 200px;
+        height: 200px;
+        font-size: 20px;
+        padding: 12px 24px;
+        cursor: pointer;
+        border: none;
+        background: #4caf50;
+        color: white;
+        border-radius: 50%;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        transition: background 0.3s;
+        pointer-events: auto;
+      }
+
+      #startBtn:hover,
+      #restartBtn:hover {
+        background: #45a049;
+      }
+
+      #startBtn {
+        pointer-events: auto;
+      }
+
+      #endScreen {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 40px 30px;
+        border-radius: 20px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        animation: fadeInZoom 0.6s ease forwards;
+        pointer-events: auto;
+        z-index: 10;
+      }
+
+      #endMessage {
+        font-size: 28px;
+        margin-bottom: 25px;
+        color: #333;
+        text-align: center;
+      }
+
+      @keyframes fadeInZoom {
+        from {
+          opacity: 0;
+          transform: scale(0.5);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    </style>
+
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+
+      const startBtn = document.getElementById("startBtn");
+      const endScreen = document.getElementById("endScreen");
+      const endMessage = document.getElementById("endMessage");
+      const restartBtn = document.getElementById("restartBtn");
+
+      let selectionPhase = false;
+      let selectionTimer = 240; // 4 секунды
+      let gameStarted = false;
+      let winnerBall = null;
+      let enemyTeamMode = false;
+
+      startBtn.onclick = () => {
+        startBtn.style.display = "none";
+        startGame();
+      };
+
+      restartBtn.onclick = () => {
+        endScreen.style.display = "none";
+        startGame();
+      };
+
+      function startGame() {
+        playerSelectedBalls.length = 0;
+        balls = [];
+        selectedBalls = [];
+        for (const ball of balls) {
+          ball.selectedByPlayer = false;
+        }
+        spawnBalls();
+        selectionPhase = true;
+        selectionTimer = 240;
+        roundActive = false;
+        regroupTimer = 0;
+        gameStarted = true;
+        startTime = Date.now(); // обязательно!
+        console.log("🚀 Выберите 4 шара. Игра скоро начнётся...");
+      }
+
+      let selectionStartTime = Date.now();
+      let selectedBalls = [];
+      let playerSelectedBalls = [];
+
+      class Ball {
+        constructor(x, y, type) {
+          this.x = x;
+          this.y = y;
+          this.radius = 15;
+          this.baseRadius = 12;
+          this.scale = 1;
+          this.targetScale = 1;
+          this.color = this.getColorByType(type);
+          this.type = type;
+          this.dx = 0;
+          this.dy = 0;
+          this.score = 0;
+          this.id = Math.random().toString(36).substr(2, 9);
+          this.hp = 200;
+          this.mode = "toCenter"; // варианты: 'toCenter', 'spread'
+          this.spreadTimer = 0;
+          this.selectedByPlayer = false;
+          this.collisionSurvived = 0;
+          this.bonusGiven = false;
+          this.auraTimer = 0;
+          this.auraColor = null;
+        }
+        activateAura(duration = 400) {
+          this.auraTimer = duration;
+
+          // Можно сразу запустить таймер уменьшения
+          const interval = setInterval(() => {
+            this.auraTimer -= 100;
+            if (this.auraTimer <= 0) {
+              this.auraTimer = 0;
+              clearInterval(interval);
+            }
+          }, 100);
+        }
+
+        getColorByType(type) {
+          switch (type) {
+            case "A":
+              return "green";
+            case "B":
+              return "orange";
+            case "D":
+              return "purple";
+            case "G":
+              return "pink";
+          }
+        }
+
+        draw() {
+          // 🌟 Если активна аура — рисуем жёлтую окружность
+          // if (this.auraTimer > 0) {
+          //   ctx.beginPath();
+          //   ctx.arc(this.x, this.y, this.radius + 5, 0, Math.PI * 2);
+          //   ctx.strokeStyle = "orange";
+          //   ctx.lineWidth = 2;
+          //   ctx.stroke();
+          //   ctx.closePath();
+          // }
+
+          if (this.selectedByPlayer) {
+            ctx.fillStyle = "green";
+            ctx.font = "26px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("R", this.x, this.y);
+          }
+          if (this.hp <= 0) {
+            // Рисуем гробик
+            ctx.fillStyle = "black";
+            ctx.beginPath();
+            ctx.moveTo(this.x - 15, this.y); // верхний левый угол
+            ctx.arcTo(this.x + 15, this.y, this.x + 15, this.y + 40, 10); // верхний правый скруглённый угол
+            ctx.lineTo(this.x + 15, this.y + 40);
+            ctx.lineTo(this.x - 15, this.y + 40);
+            ctx.closePath();
+            ctx.fill();
+
+            // Надпись RIP
+            ctx.fillStyle = "white";
+            ctx.font = "12px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("RIP", this.x, this.y + 25);
+          } else {
+            // Рисуем живой шар
+            ctx.save(); // 💡 Сохраняем состояние перед масштабом
+            ctx.translate(this.x, this.y);
+            this.scale += (this.targetScale - this.scale) * 0.1;
+            ctx.scale(this.scale, this.scale);
+            ctx.beginPath();
+            ctx.arc(0, 0, this.baseRadius, 0, Math.PI * 2); // ⬅️ координаты 0,0
+            ctx.fillStyle = this.selectedByPlayer ? "lightblue" : this.color;
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore(); // 💡 Восстанавливаем масштаб и позицию
+
+            if (enemyTeamMode && !this.selectedByPlayer && this.hp > 0) {
+              ctx.fillStyle = "purple";
+              ctx.font = "12px Arial";
+              ctx.textAlign = "center";
+              ctx.fillText("Team", this.x, this.y - this.radius - 22);
+            }
+
+            // 🌟 Аура: жёлтая или фиолетовая в зависимости от ситуации
+            if (this.auraTimer > 0) {
+              ctx.beginPath();
+              ctx.arc(this.x, this.y, this.radius + 5, 0, Math.PI * 2);
+              ctx.strokeStyle = this.auraColor || "yellow";
+              ctx.lineWidth = 2;
+              ctx.stroke();
+              ctx.closePath();
+            }
+
+            // Отображаем очки
+            ctx.fillStyle = "black";
+            ctx.font = "10px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(this.score, this.x, this.y + 3);
+          }
+          // Отрисовка HP над шариком
+          ctx.font = "14px Arial";
+          ctx.fillStyle = "black";
+          ctx.textAlign = "center";
+          ctx.fillText(`❤️${this.hp}`, this.x, this.y - this.radius - 8);
+        }
+
+        update() {
+          if (this.hp <= 0) return; // Мёртвый шарик не двигается
+
+          balls.forEach((balls) => {
+            if (balls.auraTimer > 0) {
+              balls.auraTimer--;
+            }
+          });
+
+          if (this.mode === "toCenter") {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const dx = centerX - this.x;
+            const dy = centerY - this.y;
+            const dist = Math.hypot(dx, dy);
+
+            const speed = 1.5; // скорость движения к центру
+
+            if (dist > 1) {
+              this.dx = (dx / dist) * speed;
+              this.dy = (dy / dist) * speed;
+              this.x += this.dx;
+              this.y += this.dy;
+            } else {
+              this.dx = 0;
+              this.dy = 0;
+            }
+          } else if (this.mode === "spread") {
+            this.x += this.dx;
+            this.y += this.dy;
+
+            this.spreadTimer--;
+            if (this.spreadTimer <= 0) {
+              this.mode = "toCenter";
+            }
+          }
+        }
+
+        moveTo(targetX, targetY, speed = 1.5) {
+          const angle = Math.atan2(targetY - this.y, targetX - this.x);
+          this.dx = Math.cos(angle) * speed;
+          this.dy = Math.sin(angle) * speed;
+        }
+      }
+
+      const types = ["A", "B", "D", "G"];
+      let balls = [];
+
+      function spawnBalls(n = 16) {
+        balls = [];
+        for (let i = 0; i < n; i++) {
+          const type = types[i % types.length];
+          let x, y;
+          const edge = Math.floor(Math.random() * 4);
+          if (edge === 0) {
+            x = 0;
+            y = Math.random() * canvas.height;
+          } else if (edge === 1) {
+            x = canvas.width;
+            y = Math.random() * canvas.height;
+          } else if (edge === 2) {
+            x = Math.random() * canvas.width;
+            y = 0;
+          } else {
+            x = Math.random() * canvas.width;
+            y = canvas.height;
+          }
+
+          const ball = new Ball(x, y, type);
+
+          // Инициализируем таймер ауры
+          this.auraTimer = 0;
+
+          if (playerSelectedBallIds.includes(ball.id)) {
+            ball.selectedByPlayer = true;
+          }
+
+          ball.moveTo(canvas.width / 2, canvas.height / 2);
+          balls.push(ball);
+        }
+      }
+
+      let startTime = Date.now();
+      // canvas.addEventListener("mousemove", (e) => {
+      //   if (Date.now() - startTime > 4000) return; // Только первые 4 секунды
+      //   if (selectedBalls.length >= 4) return; // ❗ Уже выбрано 4 — дальше не обрабатываем
+      //   const rect = canvas.getBoundingClientRect();
+      //   const mouseX = e.clientX - rect.left;
+      //   const mouseY = e.clientY - rect.top;
+
+      //   for (const ball of balls) {
+      //     if (ball.hp <= 0 || ball.selectedByPlayer) continue; // Не выбираем мёртвых или уже выбранных
+      //     const dx = mouseX - ball.x;
+      //     const dy = mouseY - ball.y;
+      //     if (Math.sqrt(dx * dx + dy * dy) < ball.radius) {
+      //       if (selectedBalls.length < 4) {
+      //         ball.selectedByPlayer = true;
+      //         selectedBalls.push(ball);
+      //         break;
+      //       }
+      //     }
+      //   }
+      // });
+      canvas.addEventListener("click", (e) => {
+        // if (Date.now() - startTime > 4000) return; // Только первые 4 секунды
+        if (selectedBalls.length >= 4) return; // Строго 4 шара
+        handleSelection(e.clientX, e.clientY);
+
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // handleBallSelection(mouseX, mouseY);
+
+        for (const ball of balls) {
+          if (ball.hp <= 0 || ball.selectedByPlayer) continue;
+
+          const dx = mouseX - ball.x;
+          const dy = mouseY - ball.y;
+          if (Math.sqrt(dx * dx + dy * dy) < ball.radius) {
+            ball.selectedByPlayer = true;
+            selectedBalls.push(ball);
+            selectedBalls.push(ball);
+            // Вернём масштаб обратно через 0.6 секунды
+            setTimeout(() => {
+              ball.targetScale = 1;
+            }, 600);
+            console.log("✅ Выбран шар", ball.id);
+            break;
+          }
+        }
+      });
+
+      canvas.addEventListener("touchstart", (e) => {
+        // if (Date.now() - startTime > 4000) return; // Только первые 4 секунды
+        if (selectedBalls.length >= 4) return; // Строго 4 шара
+
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        const touchX = touch.clientX - rect.left;
+        const touchY = touch.clientY - rect.top;
+        handleBallSelection(touchX, touchY);
+        handleSelection(touch.clientX, touch.clientY);
+
+        for (const ball of balls) {
+          if (ball.hp <= 0 || ball.selectedByPlayer) continue;
+
+          const dx = mouseX - ball.x;
+          const dy = mouseY - ball.y;
+          if (Math.sqrt(dx * dx + dy * dy) < ball.radius) {
+            ball.selectedByPlayer = true;
+            selectedBalls.push(ball);
+            selectedBalls.push(ball);
+            // Вернём масштаб обратно через 0.6 секунды
+            setTimeout(() => {
+              ball.targetScale = 1;
+            }, 600);
+            console.log("✅ Выбран шар", ball.id);
+            break;
+          }
+        }
+      });
+
+      function detectCollisions() {
+        for (let i = 0; i < balls.length; i++) {
+          for (let j = i + 1; j < balls.length; j++) {
+            const b1 = balls[i];
+            const b2 = balls[j];
+            const dx = b1.x - b2.x;
+            const dy = b1.y - b2.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < b1.radius + b2.radius) {
+              resolveCollision(b1, b2);
+            }
           }
         }
       }
-  
-      if (target) {
-        const dx = target.x - this.x;
-        const dy = target.y - this.y;
-        const mag = Math.sqrt(dx * dx + dy * dy);
-  
-        this.vx = (dx / mag) * this.speed;
-        this.vy = (dy / mag) * this.speed;
+      /*winnerBall = [];*/
+      const playerSelectedBallIds = [];
+
+      function stopGame() {
+        roundActive = false;
+        selectionPhase = false;
+        gameStarted = false;
+        enemyTeamMode = false; // сбрасываем режим EnemyTeam
+        winnerBall = null;
+        // playerSelectedBallIds = []; // сбрасываем ID выбранных игроком шаров
+        // winner = null; // если есть переменная победителя
+        // gameOver = false;
       }
-    }
-  }
-  
-  Ball.idCounter = 0;
-  
 
-  
-  const balls = [];
+      function checkSelectedBallSurvival(ball) {
+        if (
+          ball.selectedByPlayer &&
+          ball.collisionSurvived >= 2 &&
+          !ball.bonusGiven
+        ) {
+          ball.hp += 10;
 
-  function spawnBalls() {
-    const spacing = canvas.height / 7;
-    for (let i = 1; i <= 6; i++) {
-      let yPos = spacing * i;
-      balls.push(new Ball(0, yPos, 'right'));
-      balls.push(new Ball(canvas.width, yPos, 'left'));
-    }
-  }
-
-  function checkCollisions() {
-    for (let i = 0; i < balls.length; i++) {
-      for (let j = i + 1; j < balls.length; j++) {
-        balls[i].handleCollision(balls[j]);
+          ball.bonusGiven = true; // Чтобы бонус не давался много раз
+        }
+        // console.log(`Бонус! ${ball.id} получил +20 HP`);
+        console.log(`Бонус! ${ball.type}-${ball.id} получил +10 HP`);
       }
-    }
-  }
 
-  function updateAndDraw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+      function handleBallSelection(x, y) {
+        // if (Date.now() - startTime > 4000) return;
 
-    for (let ball of balls) {
-      ball.update();
-      ball.draw(ctx);
-    }
+        const selectedCount = balls.filter(
+          (b) => b.selectedByPlayer && b.hp > 0
+        ).length;
+        // if (selectedCount >= 4) return; // ← теперь строгое ограничение на 4 живых выбранных шара
 
-    checkCollisions();
-    requestAnimationFrame(updateAndDraw);
-  }
+        for (const ball of balls) {
+          if (ball.hp <= 0 || ball.selectedByPlayer) continue;
 
-  spawnBalls();
-  updateAndDraw();
-</script>
-</body>
+          const dx = x - ball.x;
+          const dy = y - ball.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < ball.radius + 10) {
+            ball.selectedByPlayer = true;
+            selectedBalls.push(ball); // опционально, если используется
+            console.log("✅ Выбран шар", ball.id);
+            break;
+          }
+        }
+      }
+
+      function checkGameState() {
+        const aliveBalls = balls.filter((b) => b.hp > 0);
+        /* console.clear();*/
+        balls.forEach((b) => {
+          const status = b.hp > 0 ? "Живой" : "Мертвый";
+          console.log(`ID: ${b.id}, Очки: ${b.score}, Статус: ${status}`);
+        });
+
+        const onlySelectedAlive = aliveBalls.every((b) => b.selectedByPlayer);
+        const onlyEnemyTeamAlive = aliveBalls.every(
+          (b) => !b.selectedByPlayer && enemyTeamMode
+        );
+
+        if (onlySelectedAlive && aliveBalls.length > 0) {
+          console.log("🎉 Победа игрока! Остались только выбранные шары.");
+          gameOver("win");
+          showEndScreen();
+        } else if (onlyEnemyTeamAlive && aliveBalls.length > 0) {
+          console.log("💀 Поражение! Остались только вражеские шары.");
+          gameOver("lose");
+          showEndScreen();
+        }
+      }
+
+      function showEndScreen() {
+        endScreen.style.display = "block";
+        stopGame();
+      }
+
+      function gameOver(result) {
+        roundActive = false;
+        selectionPhase = false;
+        gameStarted = false;
+
+        if (result === "win") {
+          endMessage.innerHTML = `🎉 Победа!`;
+          showEndScreen();
+        } else if (result === "lose") {
+          endMessage.innerHTML = `💥 Поражение.`;
+          showEndScreen();
+        }
+      }
+
+      function checkVictoryOrDefeat() {
+        const aliveBalls = balls.filter((b) => b.hp > 0);
+
+        const onlySelectedAlive = aliveBalls.every((b) => b.selectedByPlayer);
+        const onlyEnemyTeamAlive = aliveBalls.every(
+          (b) => !b.selectedByPlayer && enemyTeamMode
+        );
+
+        if (onlySelectedAlive && aliveBalls.length > 0) {
+          console.log("🎉 Победа игрока! Остались только выбранные шары.");
+          gameOver("win");
+        } else if (onlyEnemyTeamAlive && aliveBalls.length > 0) {
+          console.log("💀 Поражение! Остались только вражеские шары.");
+          gameOver("lose");
+        }
+      }
+
+      function resolveCollision(ball1, ball2) {
+        if (ball1.hp <= 0 || ball2.hp <= 0) return;
+
+        // --- Новая логика для двух выбранных ---
+        if (ball1.selectedByPlayer && ball2.selectedByPlayer) {
+          // --- Специальное поведение для двух выбранных шаров ---
+          if (ball1.selectedByPlayer && ball2.selectedByPlayer) {
+            // Отталкивание без урона, +10hp
+            // ball1.auraTimer = 240; // 4 секунды, если 60 FPS
+            // ball2.auraTimer = 240;
+            // Проверка на дистанцию как обычно
+            const dx = ball2.x - ball1.x;
+            const dy = ball2.y - ball1.y;
+            const distance = Math.hypot(dx, dy);
+
+            if (distance < ball1.radius + ball2.radius) {
+              const angle = Math.atan2(dy, dx);
+              const force = 3;
+
+              ball1.dx = -Math.cos(angle) * force;
+              ball1.dy = -Math.sin(angle) * force;
+              ball2.dx = Math.cos(angle) * force;
+              ball2.dy = Math.sin(angle) * force;
+
+              ball1.mode = "spread";
+              ball2.mode = "spread";
+              ball1.spreadTimer = 60;
+              ball2.spreadTimer = 60;
+
+              // Прибавляем здоровье (максимум 100)
+              ball1.hp = Math.min(ball1.hp + 20, 200);
+              ball2.hp = Math.min(ball2.hp + 20, 200);
+
+              ball1.activateAura(); // Включаем жёлтую ауру
+              ball2.activateAura();
+
+              console.log(
+                `Выбранные шары оттолкнулись и восстановили HP: ${ball1.id}, ${ball2.id}`
+              );
+            }
+            // ball1.activateAura(); // Включаем жёлтую ауру
+            // ball2.activateAura();
+            return; // Завершаем, т.к. обычное столкновение не нужно
+          }
+
+          return;
+        }
+        // Расстояние между центрами
+        const dx = ball2.x - ball1.x;
+        const dy = ball2.y - ball1.y;
+        const distance = Math.hypot(dx, dy);
+
+        // if (ball1.selectedByPlayer && ball2.selectedByPlayer) {
+        //   return; // Помеченные шары не сталкиваются между собой
+        // }
+
+        if (distance < ball1.radius + ball2.radius) {
+          // === EnemyTeam режим ===
+          if (!enemyTeamMode) {
+            const unselected = balls.filter(
+              (b) => !b.selectedByPlayer && b.hp > 0
+            );
+            if (unselected.length <= 4) {
+              enemyTeamMode = true;
+              console.log("EnemyTeam");
+            }
+          }
+
+          // === EnemyTeam поведение: отталкивание + исцеление ===
+          if (
+            enemyTeamMode &&
+            !ball1.selectedByPlayer &&
+            !ball2.selectedByPlayer &&
+            distance < ball1.radius + ball2.radius
+          ) {
+            const angle = Math.atan2(dy, dx);
+            const force = 3;
+
+            ball1.dx = -Math.cos(angle) * force;
+            ball1.dy = -Math.sin(angle) * force;
+            ball2.dx = Math.cos(angle) * force;
+            ball2.dy = Math.sin(angle) * force;
+
+            ball1.mode = "spread";
+            ball2.mode = "spread";
+            ball1.spreadTimer = 60;
+            ball2.spreadTimer = 60;
+
+            ball1.auraColor = "purple";
+            ball2.auraColor = "purple";
+            ball1.auraTimer = 240; // 4 секунды
+            ball2.auraTimer = 240;
+
+            ball1.hp = Math.min(ball1.hp + 40, 200);
+            ball2.hp = Math.min(ball2.hp + 40, 200);
+
+            return;
+          }
+
+          // --- Урон ---
+          const damage = Math.floor(Math.random() * 20) + 5; // от 5 до 25
+          ball1.hp -= damage;
+          ball2.hp -= damage;
+
+          ball1.collisionSurvived = (ball1.collisionSurvived || 0) + 1;
+          ball2.collisionSurvived = (ball2.collisionSurvived || 0) + 1;
+
+          checkSelectedBallSurvival(ball1);
+          checkSelectedBallSurvival(ball2);
+
+          // --- Очки ---
+          ball1.score += 1;
+          ball2.score += 1;
+
+          if (ball1.hp <= 0) {
+            ball1.hp = 0;
+          }
+          if (ball2.hp <= 0) {
+            ball2.hp = 0;
+          }
+
+          // --- Победитель увеличивается ---
+          if (ball1.score > ball2.score) {
+            ball1.radius += 1;
+          } else if (ball2.score > ball1.score) {
+            ball2.radius += 1;
+          }
+
+          // --- Расчёт направления отталкивания ---
+          const angle = Math.atan2(dy, dx);
+          const force = 3;
+
+          ball1.dx = -Math.cos(angle) * force;
+          ball1.dy = -Math.sin(angle) * force;
+          ball2.dx = Math.cos(angle) * force;
+          ball2.dy = Math.sin(angle) * force;
+
+          // Установить разбегание
+          ball1.mode = "spread";
+          ball2.mode = "spread";
+          ball1.spreadTimer = 60;
+          ball2.spreadTimer = 60;
+        }
+        const aliveBalls = balls.filter((b) => b.hp > 0);
+
+        const onlySelectedAlive = aliveBalls.every((b) => b.selectedByPlayer);
+        const onlyEnemyTeamAlive = aliveBalls.every(
+          (b) => !b.selectedByPlayer && enemyTeamMode
+        );
+
+        if (onlySelectedAlive && aliveBalls.length > 0) {
+          console.log("🎉 Победа игрока! Остались только выбранные шары.");
+          gameOver("win");
+        } else if (onlyEnemyTeamAlive && aliveBalls.length > 0) {
+          console.log("💀 Поражение! Остались только вражеские шары.");
+          gameOver("lose");
+        }
+        checkGameState();
+      }
+
+      function regroupToCenter() {
+        for (let ball of balls) {
+          ball.moveTo(canvas.width / 2, canvas.height / 2);
+        }
+      }
+
+      let roundActive = true;
+      let regroupTimer = 0;
+
+      function gameLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let ball of balls) {
+          if (this.auraTimer > 0) {
+            this.auraTimer--;
+          }
+          ball.update();
+          ball.draw();
+        }
+
+        if (!gameStarted) return requestAnimationFrame(gameLoop);
+
+        if (roundActive) {
+          detectCollisions();
+          if (balls.length <= 1) {
+            roundActive = false;
+            regroupTimer = 120;
+          }
+        } else {
+          regroupTimer--;
+          if (regroupTimer === 60) regroupToCenter();
+          if (regroupTimer <= 0 && balls.length > 1) {
+            roundActive = true;
+          }
+        }
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      function handleSelection(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        for (const ball of balls) {
+          if (ball.selectedByPlayer || selectedBalls.length >= 4) continue;
+          const dx = x - ball.x;
+          const dy = y - ball.y;
+          if (Math.hypot(dx, dy) < ball.radius * 1.5) {
+            ball.selectedByPlayer = true;
+            ball.targetScale = 2;
+            selectedBalls.push(ball);
+            // Вернём масштаб обратно через 0.6 секунды
+            setTimeout(() => {
+              ball.targetScale = 1;
+            }, 600);
+            break;
+          }
+        }
+      }
+
+      function handleClick(event) {
+        // console.log("hendle");
+        const rect = canvas.getBoundingClientRect();
+        const clickX = event.clientX - rect.left;
+        const clickY = event.clientY - rect.top;
+
+        for (const ball of balls) {
+          if (ball.hp <= 0 || ball.selectedByPlayer) continue;
+          // пропускаем мертвых
+          if (selectedBalls.length >= 4) return; // ❗ Уже выбрано 4 — дальше не обрабатываем
+          const dx = ball.x - clickX;
+          const dy = ball.y - clickY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < ball.radius + 5) {
+            if (!ball.selectedByPlayer && playerSelectedBalls.length < 4) {
+              ball.selectedByPlayer = true;
+
+              playerSelectedBalls.push(ball);
+              console.log(`Вы выбрали шар игрока: ID ${ball.id}`);
+            }
+            break;
+          }
+        }
+      }
+
+      spawnBalls();
+      gameLoop();
+      canvas.addEventListener("click", handleClick);
+    </script>
+  </body>
 </html>
