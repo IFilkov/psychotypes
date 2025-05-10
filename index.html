@@ -15,6 +15,8 @@
       </div>
     </div>
 
+    <div id="levelDisplay">Level 1</div>
+
     <style>
       canvas {
         background-color: #eee;
@@ -80,6 +82,17 @@
         text-align: center;
       }
 
+      #levelDisplay {
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        font-size: 24px;
+        font-weight: bold;
+        color: blue;
+        font-family: sans-serif;
+        z-index: 10;
+      }
+
       @keyframes fadeInZoom {
         from {
           opacity: 0;
@@ -118,6 +131,12 @@
         startGame();
       };
 
+      function updateLevelDisplay() {
+        document.getElementById(
+          "levelDisplay"
+        ).textContent = `Level ${currentLevel}`;
+      }
+
       function startGame() {
         playerSelectedBalls.length = 0;
         balls = [];
@@ -132,6 +151,8 @@
         regroupTimer = 0;
         gameStarted = true;
         startTime = Date.now(); // обязательно!
+
+        updateLevelDisplay();
         console.log("🚀 Выберите 4 шара. Игра скоро начнётся...");
 
         // if (!isInitialStart) {
@@ -677,6 +698,7 @@
         document.body.appendChild(scoreDisplay);
 
         currentLevel++;
+        updateLevelDisplay();
         if (currentLevel === 4) {
           console.log("➡️ Уровень 4 (заглушка)");
         } else {
@@ -960,8 +982,8 @@
             );
             if (
               (currentLevel === 1 && unselected.length <= 4) ||
-              (currentLevel === 3 && unselected.length <= 6) ||
-              (currentLevel === 4 && unselected.length <= 8)
+              (currentLevel === 2 && unselected.length <= 6) ||
+              (currentLevel === 3 && unselected.length <= 8)
             ) {
               enemyTeamMode = true;
               console.log("EnemyTeam");
