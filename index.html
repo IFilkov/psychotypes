@@ -645,37 +645,33 @@
         currentLevel = 1;
 
         // const restartBtn = document.createElement("button");
-        restartBtn.textContent = "Начать заново";
-        restartBtn.style.position = "absolute";
-        restartBtn.style.top = "50%";
-        restartBtn.style.left = "50%";
-        restartBtn.style.transform = "translate(-50%, -50%)";
-        restartBtn.style.fontSize = "24px";
-        restartBtn.style.padding = "10px 20px";
+        // restartBtn.textContent = "Начать заново";
+        // restartBtn.style.position = "absolute";
+        // restartBtn.style.top = "50%";
+        // restartBtn.style.left = "50%";
+        // restartBtn.style.transform = "translate(-50%, -50%)";
+        // restartBtn.style.fontSize = "24px";
+        // restartBtn.style.padding = "10px 20px";
 
-        restartBtn.onclick = () => {
-          restartBtn.remove();
-          document.getElementById("startBtn")?.remove();
-          const newBtn = document.createElement("button");
-          newBtn.id = "startBtn";
-          newBtn.textContent = "Начать игру";
-          newBtn.style.position = "absolute";
-          newBtn.style.top = "50%";
-          newBtn.style.left = "50%";
-          newBtn.style.transform = "translate(-50%, -50%)";
-          newBtn.style.fontSize = "24px";
-          newBtn.style.padding = "10px 20px";
-          document.body.appendChild(newBtn);
+        restartBtn.remove();
+        document.getElementById("startBtn")?.remove();
+        const newBtn = document.createElement("button");
+        newBtn.id = "startBtn";
+        newBtn.textContent = "Начать игру";
+        newBtn.style.position = "absolute";
+        newBtn.style.top = "50%";
+        newBtn.style.left = "50%";
+        newBtn.style.transform = "translate(-50%, -50%)";
+        newBtn.style.fontSize = "24px";
+        newBtn.style.padding = "10px 20px";
+        document.body.appendChild(newBtn);
 
-          newBtn.addEventListener("click", () => {
-            newBtn.remove();
-            isInitialStart = false;
-            currentLevel = 1;
-            startGame();
-          });
-        };
-
-        document.body.appendChild(restartBtn);
+        newBtn.addEventListener("click", () => {
+          newBtn.remove();
+          isInitialStart = false;
+          currentLevel = 1;
+          startGame();
+        });
       }
 
       // Победа — увеличить уровень, сохранить TopScore
@@ -877,7 +873,7 @@
           }
 
           // Кнопка перезапуска
-          createRestartButton();
+          // createRestartButton();
         }
       }
 
