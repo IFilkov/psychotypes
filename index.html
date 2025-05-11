@@ -16,7 +16,7 @@
     </div>
 
     <div id="levelDisplay">Level 1</div>
-    <div id="VersionDisplay">BubbleBattle @IFilkov</div>
+    <div id="VersionDisplay">"FightingBalls" @IFilkov</div>
 
     <style>
       canvas {
@@ -94,13 +94,31 @@
         z-index: 10;
       }
       #VersionDisplay {
-        display: flex;
-        flex-direction: column;
-        align-items: end;
-        justify-content: flex-end;
-        color: rgb(24, 24, 25);
-        font-family: sans-serif;
-        z-index: 10;
+        position: fixed;
+        bottom: 10px;
+        right: -100%; /* Начинается за экраном */
+        white-space: nowrap;
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        color: #00aaff;
+        z-index: 1000;
+        animation: marquee 20s linear infinite;
+        pointer-events: none;
+      }
+
+      @keyframes marquee {
+        0% {
+          right: -100%;
+        }
+        100% {
+          right: 100%;
+          transform: translateX(-100vw);
+        }
+      }
+
+      /* Скрываем при старте */
+      #VersionDisplay.hidden {
+        display: none;
       }
 
       @keyframes fadeInZoom {
@@ -133,6 +151,9 @@
 
       startBtn.onclick = () => {
         startBtn.style.display = "none";
+        document.getElementById("VersionDisplay").classList.add("hidden");
+        isInitialStart = false;
+        currentLevel === 1;
         startGame();
       };
 
@@ -147,33 +168,41 @@
         ).textContent = `Level ${currentLevel}`;
       }
 
-      function startGame() {
-        playerSelectedBalls.length = 0;
-        balls = [];
-        selectedBalls = [];
-        for (const ball of balls) {
-          ball.selectedByPlayer = false;
-        }
-        spawnBalls();
-        selectionPhase = false;
-        selectionTimer = 240;
-        roundActive = true;
-        regroupTimer = 0;
-        gameStarted = true;
-        startTime = Date.now(); // обязательно!
+      // function startGame() {
+      //   // document.getElementById("VersionDisplay").style.display = "none";
+      //   // document.getElementById("VersionDisplay").classList.add("hidden");
+      //   const versionDisplay = document.getElementById("VersionDisplay");
+      //   console.log(versionDisplay); // Проверь: не null?
+      //   if (versionDisplay) {
+      //     versionDisplay.classList.add("hidden");
+      //   }
 
-        updateLevelDisplay();
-        console.log("🚀 Выберите 4 шара. Игра скоро начнётся...");
+      //   playerSelectedBalls.length = 0;
+      //   balls = [];
+      //   selectedBalls = [];
+      //   for (const ball of balls) {
+      //     ball.selectedByPlayer = false;
+      //   }
+      //   spawnBalls();
+      //   selectionPhase = false;
+      //   selectionTimer = 240;
+      //   roundActive = true;
+      //   regroupTimer = 0;
+      //   gameStarted = true;
+      //   startTime = Date.now(); // обязательно!
 
-        // if (!isInitialStart) {
-        //   // При запуске следующих уровней сразу переходим в игру, пропуская ожидание кнопки
-        //   setTimeout(() => {
-        //     selectionPhase = false;
-        //     roundActive = true;
-        //     console.log("🟢 Автостарт раунда (следующий уровень)");
-        //   }, 4000); // или 0, если хочешь сразу
-        // }
-      }
+      //   updateLevelDisplay();
+      //   console.log("🚀 Выберите 4 шара. Игра скоро начнётся...");
+
+      //   // if (!isInitialStart) {
+      //   //   // При запуске следующих уровней сразу переходим в игру, пропуская ожидание кнопки
+      //   //   setTimeout(() => {
+      //   //     selectionPhase = false;
+      //   //     roundActive = true;
+      //   //     console.log("🟢 Автостарт раунда (следующий уровень)");
+      //   //   }, 4000); // или 0, если хочешь сразу
+      //   // }
+      // }
 
       let selectionStartTime = Date.now();
       let selectedBalls = [];
@@ -614,6 +643,13 @@
       // let currentLevel = 1;
 
       function startGame() {
+        // const versionDisplay = document.getElementById("VersionDisplay");
+        // console.log(versionDisplay); // Проверь: не null?2
+        // if (versionDisplay) {
+        //   versionDisplay.classList.add("hidden");
+        // }
+        // document.getElementById("VersionDisplay").classList.add("hidden");
+
         updateLevelDisplay();
         playerSelectedBalls.length = 0;
         balls = [];
@@ -623,6 +659,7 @@
         }
 
         spawnBalls();
+        enemyTeamMode = false;
         selectionPhase = true;
         selectionTimer = 240;
         roundActive = false;
@@ -643,13 +680,13 @@
       }
 
       // При нажатии кнопки "Начать игру"
-      document.getElementById("startBtn").addEventListener("click", () => {
-        document.getElementById("startBtn").remove();
-        isInitialStart = false;
-        currentLevel === 1;
+      // document.getElementById("startBtn").addEventListener("click", () => {
+      //   document.getElementById("startBtn").remove();
+      //   isInitialStart = false;
+      //   currentLevel === 1;
 
-        startGame();
-      });
+      //   startGame();
+      // });
 
       // Перезапуск игры (после проигрыша)
       function restartGame() {
@@ -667,6 +704,7 @@
 
         restartBtn.remove();
         document.getElementById("startBtn")?.remove();
+
         const newBtn = document.createElement("button");
         newBtn.id = "startBtn";
         newBtn.textContent = "Начать игру";
@@ -679,6 +717,7 @@
         document.body.appendChild(newBtn);
 
         newBtn.addEventListener("click", () => {
+          document.getElementById("VersionDisplay").classList.add("hidden");
           newBtn.remove();
           isInitialStart = false;
           currentLevel = 1;
@@ -823,6 +862,7 @@
 
         if (currentLevel === 2) {
           console.log("Level 2 start");
+          document.getElementById("VersionDisplay").classList.add("hidden");
           startGame(); // Перезапускаем сцену
         } else if (currentLevel === 3) {
           console.log("Level 3 start");
@@ -834,6 +874,9 @@
       }
 
       function gameOver(result) {
+        // document.getElementById("VersionDisplay").classList.remove("hidden");
+        document.getElementById("VersionDisplay").classList.remove("hidden");
+
         enemyTeamMode = false;
         let totalScore = balls.reduce(
           (sum, b) => (b.hp > 0 ? sum + b.score : sum),
@@ -924,6 +967,9 @@
       }
 
       function resolveCollision(ball1, ball2) {
+        if (ball1.isDragging || ball2.isDragging) {
+          return; // Пропускаем столкновение, если один из шаров перетаскивается
+        }
         if (ball1.hp <= 0 || ball2.hp <= 0) return;
 
         // --- Новая логика для двух выбранных ---
