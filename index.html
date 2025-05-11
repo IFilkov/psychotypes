@@ -16,6 +16,7 @@
     </div>
 
     <div id="levelDisplay">Level 1</div>
+    <div id="VersionDisplay">BubbleBattle @IFilkov</div>
 
     <style>
       canvas {
@@ -92,6 +93,15 @@
         font-family: sans-serif;
         z-index: 10;
       }
+      #VersionDisplay {
+        display: flex;
+        flex-direction: column;
+        align-items: end;
+        justify-content: flex-end;
+        color: rgb(24, 24, 25);
+        font-family: sans-serif;
+        z-index: 10;
+      }
 
       @keyframes fadeInZoom {
         from {
@@ -126,10 +136,10 @@
         startGame();
       };
 
-      restartBtn.onclick = () => {
-        endScreen.style.display = "none";
-        startGame();
-      };
+      // restartBtn.onclick = () => {
+      //   endScreen.style.display = "none";
+      //   startGame();
+      // };
 
       function updateLevelDisplay() {
         document.getElementById(
@@ -238,7 +248,7 @@
             ctx.font = "26px Arial";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText("R", this.x, this.y);
+            ctx.fillText("💀", this.x, this.y);
           }
           if (this.hp <= 0) {
             // Рисуем гробик
@@ -604,6 +614,7 @@
       // let currentLevel = 1;
 
       function startGame() {
+        updateLevelDisplay();
         playerSelectedBalls.length = 0;
         balls = [];
         selectedBalls = [];
@@ -622,20 +633,21 @@
         console.log(`🚀 Уровень ${currentLevel} — выберите 4 шара.`);
 
         // Автостарт на уровнях 2 и выше
-        if (!isInitialStart) {
-          setTimeout(() => {
-            selectionPhase = false;
-            roundActive = true;
-            console.log("🟢 Автостарт раунда");
-          }, 4000);
-        }
+        // if (!isInitialStart) {
+        //   setTimeout(() => {
+        //     selectionPhase = false;
+        //     roundActive = true;
+        //     console.log("🟢 Автостарт раунда");
+        //   }, 4000);
+        // }
       }
 
       // При нажатии кнопки "Начать игру"
       document.getElementById("startBtn").addEventListener("click", () => {
         document.getElementById("startBtn").remove();
         isInitialStart = false;
-        currentLevel = 1;
+        currentLevel === 1;
+
         startGame();
       });
 
@@ -750,7 +762,7 @@
 
         if (onlySelectedAlive && aliveBalls.length > 0) {
           console.log("🎉 Победа игрока! Остались только выбранные шары.");
-          // gameOver("win");
+          gameOver("win");
           // showEndScreen();
           startGame();
         } else if (onlyEnemyTeamAlive && aliveBalls.length > 0) {
