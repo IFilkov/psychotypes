@@ -99,10 +99,10 @@
         right: -100%; /* Начинается за экраном */
         white-space: nowrap;
         font-family: Arial, sans-serif;
-        font-size: 14px;
+        font-size: 42px;
         color: #00aaff;
         z-index: 1000;
-        animation: marquee 20s linear infinite;
+        animation: marquee 10s linear infinite;
         pointer-events: none;
       }
 
@@ -157,52 +157,11 @@
         startGame();
       };
 
-      // restartBtn.onclick = () => {
-      //   endScreen.style.display = "none";
-      //   startGame();
-      // };
-
       function updateLevelDisplay() {
         document.getElementById(
           "levelDisplay"
         ).textContent = `Level ${currentLevel}`;
       }
-
-      // function startGame() {
-      //   // document.getElementById("VersionDisplay").style.display = "none";
-      //   // document.getElementById("VersionDisplay").classList.add("hidden");
-      //   const versionDisplay = document.getElementById("VersionDisplay");
-      //   console.log(versionDisplay); // Проверь: не null?
-      //   if (versionDisplay) {
-      //     versionDisplay.classList.add("hidden");
-      //   }
-
-      //   playerSelectedBalls.length = 0;
-      //   balls = [];
-      //   selectedBalls = [];
-      //   for (const ball of balls) {
-      //     ball.selectedByPlayer = false;
-      //   }
-      //   spawnBalls();
-      //   selectionPhase = false;
-      //   selectionTimer = 240;
-      //   roundActive = true;
-      //   regroupTimer = 0;
-      //   gameStarted = true;
-      //   startTime = Date.now(); // обязательно!
-
-      //   updateLevelDisplay();
-      //   console.log("🚀 Выберите 4 шара. Игра скоро начнётся...");
-
-      //   // if (!isInitialStart) {
-      //   //   // При запуске следующих уровней сразу переходим в игру, пропуская ожидание кнопки
-      //   //   setTimeout(() => {
-      //   //     selectionPhase = false;
-      //   //     roundActive = true;
-      //   //     console.log("🟢 Автостарт раунда (следующий уровень)");
-      //   //   }, 4000); // или 0, если хочешь сразу
-      //   // }
-      // }
 
       let selectionStartTime = Date.now();
       let selectedBalls = [];
@@ -430,26 +389,7 @@
       }
 
       let startTime = Date.now();
-      // canvas.addEventListener("mousemove", (e) => {
-      //   if (Date.now() - startTime > 4000) return; // Только первые 4 секунды
-      //   if (selectedBalls.length >= 4) return; // ❗ Уже выбрано 4 — дальше не обрабатываем
-      //   const rect = canvas.getBoundingClientRect();
-      //   const mouseX = e.clientX - rect.left;
-      //   const mouseY = e.clientY - rect.top;
 
-      //   for (const ball of balls) {
-      //     if (ball.hp <= 0 || ball.selectedByPlayer) continue; // Не выбираем мёртвых или уже выбранных
-      //     const dx = mouseX - ball.x;
-      //     const dy = mouseY - ball.y;
-      //     if (Math.sqrt(dx * dx + dy * dy) < ball.radius) {
-      //       if (selectedBalls.length < 4) {
-      //         ball.selectedByPlayer = true;
-      //         selectedBalls.push(ball);
-      //         break;
-      //       }
-      //     }
-      //   }
-      // });
       canvas.addEventListener("click", (e) => {
         // if (Date.now() - startTime > 4000) return; // Только первые 4 секунды
         if (selectedBalls.length >= 4) return; // Строго 4 шара
@@ -542,13 +482,6 @@
         }
       });
 
-      // canvas.addEventListener("mouseup", () => {
-      //   if (draggingBall) {
-      //     draggingBall.isDragging = false;
-      //     draggingBall.targetScale = 1; // 💡 сброс масштаба
-      //     draggingBall = null;
-      //   }
-      // });
       canvas.addEventListener("mouseup", () => {
         if (draggingBall) {
           draggingBall.isDragging = false;
@@ -611,7 +544,7 @@
           }
         }
       }
-      /*winnerBall = [];*/
+
       const playerSelectedBallIds = [];
 
       function stopGame() {
@@ -638,9 +571,6 @@
         // console.log(`Бонус! ${ball.id} получил +20 HP`);
         console.log(`Бонус! ${ball.type}-${ball.id} получил +10 HP`);
       }
-
-      //       let isInitialStart = true;
-      // let currentLevel = 1;
 
       function startGame() {
         // const versionDisplay = document.getElementById("VersionDisplay");
@@ -678,15 +608,6 @@
         //   }, 4000);
         // }
       }
-
-      // При нажатии кнопки "Начать игру"
-      // document.getElementById("startBtn").addEventListener("click", () => {
-      //   document.getElementById("startBtn").remove();
-      //   isInitialStart = false;
-      //   currentLevel === 1;
-
-      //   startGame();
-      // });
 
       // Перезапуск игры (после проигрыша)
       function restartGame() {
@@ -866,6 +787,7 @@
           startGame(); // Перезапускаем сцену
         } else if (currentLevel === 3) {
           console.log("Level 3 start");
+          document.getElementById("VersionDisplay").classList.add("hidden");
           startGame();
         } else if (currentLevel === 4) {
           console.log("Level 4 start");
