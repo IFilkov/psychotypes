@@ -227,7 +227,7 @@
 
       #ballsWord {
         font-size: 48px;
-        color: blue;
+        color: #00aaff;
         font-weight: bold;
         opacity: 0;
         animation: slideInBalls 1.5s ease-out 1.5s forwards;
@@ -235,7 +235,7 @@
         transform: translateX(100%);
       }
 
-      @keyframes slideInBoom {
+      /* @keyframes slideInBoom {
         to {
           transform: translateX(0);
         }
@@ -245,6 +245,35 @@
         to {
           transform: translateX(0);
           opacity: 1;
+        }
+      } */
+      /* Вход */
+      @keyframes slideIn {
+        0% {
+          transform: translateX(var(--start));
+          opacity: 0;
+        }
+        50% {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        70% {
+          transform: scale(1.2);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      /* Выход */
+      @keyframes slideOut {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: translateX(var(--end));
+          opacity: 0;
         }
       }
     </style>
@@ -261,14 +290,37 @@
       window.addEventListener("resize", resizeCanvas);
       resizeCanvas(); // сразу при загрузке
 
-      window.addEventListener("DOMContentLoaded", () => {
-        const boomColors = ["green", "orange", "purple", "pink"];
+      // window.addEventListener("DOMContentLoaded", () => {
+      //   const boomColors = ["green", "orange", "purple", "pink"];
+      //   const boomText = "Boom";
+      //   const boomWord = document.getElementById("boomWord");
+
+      //   // Очистим на случай перезапуска
+      //   // boomWord.innerHTML = "";
+
+      //   for (let i = 0; i < boomText.length; i++) {
+      //     const span = document.createElement("span");
+      //     span.textContent = boomText[i];
+      //     span.style.color =
+      //       boomColors[Math.floor(Math.random() * boomColors.length)];
+      //     span.style.margin = "0 5px";
+      //     boomWord.appendChild(span);
+      //   }
+      // });
+      const boomColors = ["green", "orange", "purple", "pink"];
+      const boomWord = document.getElementById("boomWord");
+      const ballsWord = document.getElementById("ballsWord");
+      let introInterval;
+
+      function animateIntro() {
+        // Очистить Boom и подготовить
+        boomWord.innerHTML = "";
+        boomWord.style.setProperty("--start", "-100vw");
+        boomWord.style.setProperty("--end", "100vw");
+        boomWord.style.animation = "slideIn 1.5s ease-out forwards";
+
+        // Сгенерировать раскрашенные буквы Boom
         const boomText = "Boom";
-        const boomWord = document.getElementById("boomWord");
-
-        // Очистим на случай перезапуска
-        // boomWord.innerHTML = "";
-
         for (let i = 0; i < boomText.length; i++) {
           const span = document.createElement("span");
           span.textContent = boomText[i];
@@ -277,6 +329,23 @@
           span.style.margin = "0 5px";
           boomWord.appendChild(span);
         }
+
+        // Анимация Balls
+        ballsWord.style.setProperty("--start", "100vw");
+        ballsWord.style.setProperty("--end", "-100vw");
+        ballsWord.style.animation = "slideIn 1.5s ease-out 0.3s forwards";
+
+        // Выход через 3 секунды
+        setTimeout(() => {
+          boomWord.style.animation = "slideOut 1s ease-in forwards";
+          ballsWord.style.animation = "slideOut 1s ease-in forwards";
+        }, 3000);
+      }
+
+      // Запустить цикл анимации до начала игры
+      window.addEventListener("DOMContentLoaded", () => {
+        animateIntro();
+        introInterval = setInterval(animateIntro, 4000);
       });
 
       const startBtn = document.getElementById("startBtn");
@@ -292,6 +361,7 @@
       let isInitialStart = true;
 
       startBtn.onclick = () => {
+        document.getElementById("introContainer").style.display = "none";
         startBtn.style.display = "none";
         helpButton.style.display = "none";
         document.getElementById("VersionDisplay").classList.add("hidden");
@@ -939,14 +1009,18 @@
           console.log("Level 2 start");
           document.getElementById("VersionDisplay").classList.add("hidden");
           helpButton.style.display = "none";
+          document.getElementById("introContainer").style.display = "none";
           startGame(); // Перезапускаем сцену
         } else if (currentLevel === 3) {
           console.log("Level 3 start");
           document.getElementById("VersionDisplay").classList.add("hidden");
           helpButton.style.display = "none";
+          document.getElementById("introContainer").style.display = "none";
           startGame();
         } else if (currentLevel === 4) {
+          document.getElementById("introContainer").style.display = "none";
           console.log("Level 4 start");
+
           // Пока ничего не делаем
         }
       }
@@ -956,6 +1030,7 @@
         document.getElementById("VersionDisplay").classList.remove("hidden");
         // document.getElementById("helpButton").classList.remove("hidden");
         helpButton.style.display = "block";
+        document.getElementById("introContainer").style.display = "block";
 
         enemyTeamMode = false;
         let totalScore = balls.reduce(
