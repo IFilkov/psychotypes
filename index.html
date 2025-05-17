@@ -1,186 +1,224 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Шарики</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <!-- Кнопка помощи -->
+    <button id="helpBtn" class="help-button">?</button>
 
-    canvas {
-      display: block;
-      background: #f0f0f0;
-    }
-  </style>
-</head>
-<body>
-<canvas id="gameCanvas"></canvas>
+    <!-- Модальное окно -->
+    <div id="modalOverlay" class="modal-overlay hidden">
+      <div class="modal-slider">
+        <div class="slider-content">
+          <div class="slider" id="slider">
+            <!-- Слайды -->
+            <div class="slide">
+              <img src="/img/file1.webp" alt="Описание 1" />
+              <p>Описание 1</p>
+            </div>
+            <div class="slide">
+              <img src="/img/file2.webp" alt="Описание 2" />
+              <p>Описание 2</p>
+            </div>
+            <div class="slide">
+              <img src="/img/file3.webp" alt="Описание 3" />
+              <p>Описание 3</p>
+            </div>
+            <div class="slide">
+              <img src="/img/file4.webp" alt="Описание 4" />
+              <p>Описание 4</p>
+            </div>
+          </div>
+        </div>
 
-<script>
-  const canvas = document.getElementById('gameCanvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+        <!-- Навигация -->
+        <button id="prevBtn" class="nav-button left">←</button>
+        <button id="nextBtn" class="nav-button right">→</button>
+        <button id="closeBtn" class="close-button">Скрыть</button>
+      </div>
+    </div>
 
-  const ballRadius = 10;
-  const types = ['A', 'B', 'D', 'G'];
-  const colors = {
-    A: 'red',
-    B: 'blue',
-    D: 'green',
-    G: 'orange',
-    red: 'red',
-    blue: 'blue'
-  };
-
-  class Ball {
-    constructor(x, y, direction) {
-      this.originalType = types[Math.floor(Math.random() * types.length)];
-      this.type = this.originalType;
-      this.color = colors[this.type];
-      this.speed = 1 + Math.random() * 2;
-      this.x = x;
-      this.y = y;
-      this.direction = direction;
-      this.vx = direction === 'right' ? this.speed : -this.speed;
-      this.vy = 0;
-  
-      this.score = 0;
-      this.visitedTypes = new Set([this.type]);
-      this.alreadyCollided = new Set(); // Сохраняем ID других шаров
-      this.id = Ball.idCounter++;
-    }
-
-    update() {
-      this.x += this.vx;
-      this.y += this.vy;
-    }
-
-    draw(ctx) {
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, ballRadius, 0, Math.PI * 2);
-      ctx.fillStyle = this.color;
-      ctx.fill();
-      ctx.closePath();
-  
-      ctx.fillStyle = 'white';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(this.type, this.x, this.y);
-    }
-
-    handleCollision(other) {
-      if (this === other || this.alreadyCollided.has(other.id)) return;
-  
-      const dx = this.x - other.x;
-      const dy = this.y - other.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-  
-      if (this.type === other.type && dist < ballRadius * 2) {
-        this.alreadyCollided.add(other.id);
-        other.alreadyCollided.add(this.id);
-  
-        const firstRed = Math.random() < 0.5;
-        const [redBall, blueBall] = firstRed ? [this, other] : [other, this];
-  
-        redBall.color = 'red';
-        blueBall.color = 'blue';
-  
-        redBall.score += 2;
-        blueBall.score += 1;
-  
-        redBall.advanceType();
-        blueBall.advanceType();
-  
-        redBall.findTarget();
-        blueBall.findTarget();
-  
-        console.log(`⚪ Шарик ${redBall.originalType} стал красным и получил 2 очка. Счет: ${redBall.score}`);
-        console.log(`🔵 Шарик ${blueBall.originalType} стал синим и получил 1 очко. Счет: ${blueBall.score}`);
+    <style>
+      /* Общие стили */
+      .hidden {
+        display: none;
       }
-    }
 
-    advanceType() {
-      const remaining = types.filter(t => !this.visitedTypes.has(t));
-      if (remaining.length > 0) {
-        this.type = remaining[0];
-        this.visitedTypes.add(this.type);
-        this.color = colors[this.type];
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 999;
       }
-    }
 
-    findTarget() {
-      let minDist = Infinity;
-      let target = null;
-  
-      for (let b of balls) {
-        if (
-          b !== this &&
-          b.type === this.type &&
-          !this.alreadyCollided.has(b.id)
-        ) {
-          const dx = b.x - this.x;
-          const dy = b.y - this.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < minDist) {
-            minDist = dist;
-            target = b;
-          }
+      .modal-slider {
+        background: white;
+        border-radius: 12px;
+        max-width: 90%;
+        width: 100%;
+        max-height: 90vh;
+        padding: 10px;
+        position: relative;
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+
+      .slider-content {
+        overflow: hidden;
+        width: 100%;
+      }
+
+      .slider {
+        display: flex;
+        transition: transform 0.4s ease;
+        width: 100%; /* 4 слайда */
+      }
+
+      .slide {
+        flex: 0 0 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        text-align: center;
+      }
+
+      .slide img {
+        width: 100%;
+        height: auto;
+        max-height: 60vh;
+        border-radius: 10px;
+        object-fit: contain;
+      }
+
+      .nav-button {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(200, 200, 200, 0.8);
+        border: none;
+        padding: 10px;
+        border-radius: 50%;
+        font-size: 20px;
+        cursor: pointer;
+        z-index: 1000;
+      }
+
+      .nav-button.left {
+        left: 10px;
+      }
+
+      .nav-button.right {
+        right: 10px;
+      }
+
+      .close-button {
+        margin-top: 10px;
+        background: red;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+
+      /* Кнопка помощи */
+      .help-button {
+        position: fixed;
+        bottom: 16px;
+        left: 16px;
+        background: red;
+        color: white;
+        border-radius: 50%;
+        font-size: 24px;
+        width: 44px;
+        height: 44px;
+        border: none;
+        cursor: pointer;
+        z-index: 1000;
+      }
+    </style>
+
+    <script>
+      const helpBtn = document.getElementById("helpBtn");
+      const modalOverlay = document.getElementById("modalOverlay");
+      const closeBtn = document.getElementById("closeBtn");
+      const slider = document.getElementById("slider");
+      const slides = slider.querySelectorAll(".slide");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+
+      let currentSlide = 0;
+
+      function updateSlider() {
+        slider.style.transform = `translateX(-${currentSlide * 100}%)`;
+      }
+
+      helpBtn.addEventListener("click", () => {
+        modalOverlay.classList.remove("hidden");
+        updateSlider();
+      });
+
+      closeBtn.addEventListener("click", () => {
+        modalOverlay.classList.add("hidden");
+      });
+
+      modalOverlay.addEventListener("click", (e) => {
+        if (e.target === modalOverlay) {
+          modalOverlay.classList.add("hidden");
         }
-      }
-  
-      if (target) {
-        const dx = target.x - this.x;
-        const dy = target.y - this.y;
-        const mag = Math.sqrt(dx * dx + dy * dy);
-  
-        this.vx = (dx / mag) * this.speed;
-        this.vy = (dy / mag) * this.speed;
-      }
-    }
-  }
-  
-  Ball.idCounter = 0;
-  
+      });
 
-  
-  const balls = [];
+      prevBtn.addEventListener("click", () => {
+        currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+        updateSlider();
+      });
 
-  function spawnBalls() {
-    const spacing = canvas.height / 7;
-    for (let i = 1; i <= 6; i++) {
-      let yPos = spacing * i;
-      balls.push(new Ball(0, yPos, 'right'));
-      balls.push(new Ball(canvas.width, yPos, 'left'));
-    }
-  }
+      nextBtn.addEventListener("click", () => {
+        currentSlide = (currentSlide + 1) % slides.length;
+        updateSlider();
+      });
 
-  function checkCollisions() {
-    for (let i = 0; i < balls.length; i++) {
-      for (let j = i + 1; j < balls.length; j++) {
-        balls[i].handleCollision(balls[j]);
-      }
-    }
-  }
+      // Свайпы для мобильных
+      let startX = 0;
+      let endX = 0;
+      const swipeThreshold = 50;
 
-  function updateAndDraw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+      slider.addEventListener(
+        "touchstart",
+        (e) => {
+          startX = e.touches[0].clientX;
+        },
+        { passive: true }
+      );
 
-    for (let ball of balls) {
-      ball.update();
-      ball.draw(ctx);
-    }
+      slider.addEventListener(
+        "touchmove",
+        (e) => {
+          endX = e.touches[0].clientX;
+        },
+        { passive: true }
+      );
 
-    checkCollisions();
-    requestAnimationFrame(updateAndDraw);
-  }
-
-  spawnBalls();
-  updateAndDraw();
-</script>
-</body>
+      slider.addEventListener("touchend", () => {
+        const deltaX = endX - startX;
+        if (Math.abs(deltaX) > swipeThreshold) {
+          if (deltaX > 0) {
+            currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+          } else {
+            currentSlide = (currentSlide + 1) % slides.length;
+          }
+          updateSlider();
+        }
+        startX = endX = 0;
+      });
+    </script>
+  </body>
 </html>
