@@ -11,7 +11,7 @@
 
     <!-- Модальное окно -->
     <div id="modalOverlay" class="modal-overlay hidden">
-      <div class="modal-slider">
+      <div class="modal-slider" id="sliderContainer">
         <div class="slider-content">
           <div class="slider" id="slider">
             <!-- Слайды -->
@@ -33,27 +33,21 @@
             </div>
           </div>
         </div>
-
         <!-- Навигация -->
-        <button id="prevBtn" class="nav-button left">←</button>
-        <button id="nextBtn" class="nav-button right">→</button>
+        <button id="prevBtn" class="nav-button">←</button>
+        <button id="nextBtn" class="nav-button">→</button>
         <button id="closeBtn" class="close-button">Скрыть</button>
       </div>
     </div>
 
     <style>
-      /* Общие стили */
-      .hidden {
-        display: none;
-      }
-
       .modal-overlay {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.6);
+        background: rgba(0, 0, 0, 0.5);
         display: flex;
         justify-content: center;
         align-items: center;
@@ -73,21 +67,23 @@
       }
 
       .slider-content {
-        overflow: hidden;
+        /* display: flex; */
         width: 100%;
+        overflow: hidden;
+        position: relative;
       }
 
-      .slider {
+      #slider {
         display: flex;
-        transition: transform 0.4s ease;
-        width: 100%; /* 4 слайда */
+        transition: transform 0.3s ease;
+        width: 100%; /* 4 слайда => 4 x 100% */
       }
 
       .slide {
         flex: 0 0 100%;
         max-width: 100%;
         box-sizing: border-box;
-        text-align: center;
+        padding: 10px;
       }
 
       .slide img {
@@ -111,11 +107,10 @@
         z-index: 1000;
       }
 
-      .nav-button.left {
+      #prevBtn {
         left: 10px;
       }
-
-      .nav-button.right {
+      #nextBtn {
         right: 10px;
       }
 
@@ -129,7 +124,10 @@
         cursor: pointer;
       }
 
-      /* Кнопка помощи */
+      .hidden {
+        display: none;
+      }
+
       .help-button {
         position: fixed;
         bottom: 16px;
@@ -218,6 +216,12 @@
           updateSlider();
         }
         startX = endX = 0;
+      });
+      // Клик вне слайдера закрывает модалку
+      modalOverlay.addEventListener("click", (e) => {
+        if (e.target === modalOverlay) {
+          modalOverlay.classList.add("hidden");
+        }
       });
     </script>
   </body>
